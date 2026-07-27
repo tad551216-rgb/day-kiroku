@@ -174,6 +174,19 @@ table.tbl th,table.tbl td{border:1px solid var(--line);padding:6px 7px;text-alig
 table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 .scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;}
 
+input.masked{-webkit-text-security:disc;}
+input.masked.show{-webkit-text-security:none;}
+.qrwrap{text-align:center;}
+.qrwrap canvas{width:min(86vw,420px);height:auto;background:#fff;border:10px solid #fff;
+  border-radius:8px;box-shadow:0 2px 8px rgba(27,42,74,.18);}
+.qrstep{font-size:19px;font-weight:700;margin:12px 0 4px;}
+.qrbar{display:flex;gap:4px;justify-content:center;margin:8px 0 4px;flex-wrap:wrap;}
+.qrbar i{width:22px;height:8px;border-radius:4px;background:var(--line2);font-style:normal;}
+.qrbar i.on{background:var(--green);}
+.qrhint{font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;}
+.scanwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;}
+.scanwrap video{width:100%;display:block;max-height:60vh;object-fit:cover;}
+.scanwrap .frame{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;}
 #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
   opacity:0;pointer-events:none;transition:.22s;z-index:100;max-width:88vw;text-align:center;}
@@ -187,6 +200,8 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 @media print{ body{background:none;padding:0;} header,nav.tabs,.noprint{display:none !important;} .wrap{max-width:none;padding:0;} }
 @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
 </style>
+<script src="qrcode.js"></script>
+<script src="jsQR.js"></script>
 </head>
 <body>
 
@@ -226,6 +241,24 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 
   <!-- 出力 -->
   <section class="page" id="p-out">
+    <h2 class="sec">QRコードで渡す・受け取る</h2>
+    <div class="card">
+      <p class="note" style="margin-bottom:11px;">
+        同じ事業所の端末どうしで、画面のQRコードを読み取って受け渡します。
+        <b>インターネットにもLINEにも、いっさい流れません。</b>
+      </p>
+      <p class="note" style="margin-bottom:10px;" id="qrCount">—</p>
+      <button class="btn p wide" id="btnQrUsers">📱 利用者を渡す</button>
+      <button class="btn p wide" id="btnQrDay">📱 この日の記録を渡す</button>
+      <button class="btn wide" id="btnQrMonth">📱 この月の記録を渡す</button>
+      <button class="btn g wide" id="btnQrScan">📷 カメラで読み取る</button>
+      <div id="qrOut"></div>
+      <p class="note" style="margin-top:8px;">
+        管理者から職員へは<b>「利用者」</b>を、職員から管理者へは<b>「この日の記録」</b>を渡すのがふつうの使い方です。
+        受け取った側では<b>いまあるものに足しこみます</b>（消えることはありません）。
+      </p>
+    </div>
+
     <h2 class="sec">きょうの申し送り</h2>
     <div class="card">
       <div class="outbox" id="sumText">—</div>
@@ -270,6 +303,18 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
         <div class="fld"><label for="setOut">ふだんの帰宅</label><input type="time" id="setOut"></div>
       </div>
       <div class="fld"><label for="setWater">水分の目標（ml／日）</label><input type="number" id="setWater" placeholder="1000"></div>
+      <div class="fld">
+        <label for="setDevice">この端末の名前（誰の端末か）</label>
+        <input type="text" id="setDevice" placeholder="例：山田／フロア用タブレット">
+      </div>
+      <div class="fld">
+        <label for="setKey">共有の合言葉（QRで渡すときに使います）</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="setKey" class="masked" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" style="flex:1;min-width:0;">
+          <button type="button" class="btn sm" id="keyEye" style="flex:none;">見る</button>
+        </div>
+        <p class="note" style="margin-top:6px;">受け渡しをする端末どうしで、<b>同じ合言葉</b>を入れてください。合言葉は口頭や紙でお伝えください。</p>
+      </div>
       <button class="btn g" id="btnSaveFac">保存する</button>
     </div>
 
@@ -467,6 +512,38 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
   </div>
 </dialog>
 
+<!-- QRを見せる -->
+<dialog id="dlgQrSend">
+  <div class="sheet" style="width:min(560px,94vw);">
+    <div class="sheet-head"><b id="qrTitle">QRコードで渡す</b><button id="qrSendClose">閉じる</button></div>
+    <div class="sheet-body qrwrap">
+      <canvas id="qrCanvas" width="640" height="640"></canvas>
+      <p class="qrstep" id="qrStep">—</p>
+      <div class="qrbar" id="qrBar"></div>
+      <p class="qrhint" id="qrHint"></p>
+      <div class="row" style="margin-top:12px;">
+        <button class="btn" id="qrSlower">おそく</button>
+        <button class="btn" id="qrPause">とめる</button>
+        <button class="btn" id="qrFaster">はやく</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- QRを読み取る -->
+<dialog id="dlgQrScan">
+  <div class="sheet" style="width:min(560px,94vw);">
+    <div class="sheet-head"><b>QRコードを読み取る</b><button id="qrScanClose">閉じる</button></div>
+    <div class="sheet-body">
+      <div class="scanwrap"><video id="scanVideo" playsinline muted></video><div class="frame"></div></div>
+      <p class="qrstep" id="scanStep" style="text-align:center;">カメラを向けてください</p>
+      <div class="qrbar" id="scanBar"></div>
+      <p class="qrhint" id="scanHint" style="text-align:center;">読み取れた分から順にたまっていきます。全部そろうと、自動で取り込みます。</p>
+      <div id="scanOut"></div>
+    </div>
+  </div>
+</dialog>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
@@ -501,7 +578,7 @@ const DEF_PROG=['体操（全身）','口腔体操','歩行訓練','立ち上が
   'レクリエーション','塗り絵・書道','音楽','園芸','調理','外気浴','趣味活動'];
 const DEF_LIMIT={tempMax:37.5,spo2Min:93,bpHMax:160,bpHMin:90};
 const MEAL_STEPS=[0,3,5,8,10];
-let users=[], settings={facility:'',defIn:'09:30',defOut:'16:00',water:1000,
+let users=[], settings={facility:'',device:'',shareKey:'',defIn:'09:30',defOut:'16:00',water:1000,
   programs:DEF_PROG.slice(),limits:Object.assign({},DEF_LIMIT)};
 let curDate=todayStr(), curRec=null, curUser=null, editingUser=null;
 let seq=Date.now()%100000;
@@ -689,6 +766,8 @@ function collectRec(){
 $('#recClose').addEventListener('click',()=>$('#dlgRec').close());
 $('#btnRecSave').addEventListener('click',async ()=>{
   collectRec(); curRec.saved=true;
+  curRec.updatedAt=new Date().toISOString();
+  curRec.device=settings.device||'';
   await idbPut('records',curRec);
   $('#dlgRec').close(); await renderToday(); await renderSummary();
   toast('保存しました');
@@ -800,8 +879,8 @@ $('#btnUserSave').addEventListener('click',async ()=>{
   const data={name:name,kana:$('#uKana').value.trim(),kaigo:$('#uKaigo').value,
     defIn:$('#uIn').value,defOut:$('#uOut').value,days:days,
     water:$('#uWater').value,memo:$('#uMemo').value.trim(),active:true};
-  if(editingUser){ Object.assign(editingUser,data); await idbPut('users',editingUser); }
-  else { const u=Object.assign({id:'u'+(++seq)},data); users.push(u); await idbPut('users',u); }
+  if(editingUser){ Object.assign(editingUser,data,{updatedAt:new Date().toISOString()}); await idbPut('users',editingUser); }
+  else { const u=Object.assign({id:'u'+(++seq)},data); u.updatedAt=new Date().toISOString(); users.push(u); await idbPut('users',u); }
   $('#dlgUser').close(); renderUsers(); await renderToday();
   toast('保存しました');
 });
@@ -915,6 +994,232 @@ $('#btnPrint').addEventListener('click',async ()=>{
   setTimeout(()=>w.print(),400);
 });
 
+/* ===== 合言葉で包む（圧縮つき） ===== */
+const _enc=new TextEncoder(), _dec=new TextDecoder();
+function b64(buf){ const b=new Uint8Array(buf); let t=''; for(let i=0;i<b.length;i++) t+=String.fromCharCode(b[i]); return btoa(t); }
+function unb64(str){ const t=atob(str), a=new Uint8Array(t.length); for(let i=0;i<t.length;i++) a[i]=t.charCodeAt(i); return a; }
+async function keyOf(pass,salt){
+  const base=await crypto.subtle.importKey('raw',_enc.encode(String(pass).normalize('NFC')),'PBKDF2',false,['deriveKey']);
+  return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:200000,hash:'SHA-256'},
+    base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+}
+async function deflateRaw(str){
+  if(typeof CompressionStream==='undefined') return null;
+  try{
+    const cs=new CompressionStream('deflate-raw');
+    const w=cs.writable.getWriter(); w.write(_enc.encode(str)); w.close();
+    return new Uint8Array(await new Response(cs.readable).arrayBuffer());
+  }catch(e){ return null; }
+}
+async function inflateRaw(bytes){
+  const ds=new DecompressionStream('deflate-raw');
+  const w=ds.writable.getWriter(); w.write(bytes); w.close();
+  return _dec.decode(await new Response(ds.readable).arrayBuffer());
+}
+async function wrap2(text,pass){
+  const z=await deflateRaw(text);
+  const flag=z?1:0, data=z||_enc.encode(text);
+  const salt=crypto.getRandomValues(new Uint8Array(16));
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const k=await keyOf(pass,salt);
+  const ct=new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,data));
+  const all=new Uint8Array(29+ct.length);
+  all[0]=flag; all.set(salt,1); all.set(iv,17); all.set(ct,29);
+  return b64(all);
+}
+async function unwrap2(body,pass){
+  const all=unb64(body);
+  if(all.length<30) throw new Error('format');
+  const k=await keyOf(pass,all.slice(1,17));
+  const pt=new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM',iv:all.slice(17,29)},k,all.slice(29)));
+  return all[0]===1 ? await inflateRaw(pt) : _dec.decode(pt);
+}
+
+/* ===== QRコードで渡す ===== */
+const QR_MARK='DQR1:';
+const QR_CHUNK=950;
+let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=700, qrPaused=false;
+function gotoSettings(msg){
+  $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
+  const t=document.querySelector('nav.tabs button[data-tab="set"]');
+  if(t) t.classList.add('on');
+  $$('.page').forEach(p=>p.classList.remove('on'));
+  const el=$('#p-set'); if(el) el.classList.add('on');
+  fillSettings(); window.scrollTo(0,0); toast(msg);
+}
+async function renderQrCount(){
+  const recs=(await idbAll('records')).filter(r=>r.saved);
+  const today=recs.filter(r=>r.date===curDate).length;
+  $('#qrCount').innerHTML='いまこの端末に：利用者 <b>'+users.length+'名</b>'+
+    '／記録 <b>'+recs.length+'件</b>（'+jpDate(curDate)+'は '+today+'件）';
+}
+function drawQR(text){
+  const cv=$('#qrCanvas'), ctx=cv.getContext('2d');
+  const qr=qrcode(0,'M'); qr.addData(text); qr.make();
+  const n=qr.getModuleCount(), pad=2;
+  const cell=Math.floor(cv.width/(n+pad*2));
+  const off=Math.floor((cv.width-cell*n)/2);
+  ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
+  ctx.fillStyle='#000';
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(qr.isDark(r,c)) ctx.fillRect(off+c*cell,off+r*cell,cell,cell);
+}
+function qrShow(){
+  if(!qrParts.length) return;
+  drawQR(qrParts[qrIdx]);
+  $('#qrStep').textContent=(qrIdx+1)+' / '+qrParts.length+' 枚目';
+  $('#qrBar').innerHTML=qrParts.map((_,i)=>'<i class="'+(i===qrIdx?'on':'')+'"></i>').join('');
+}
+function qrStart(){ clearInterval(qrTimer); qrTimer=setInterval(()=>{ if(!qrPaused){ qrIdx=(qrIdx+1)%qrParts.length; qrShow(); } },qrSpeed); }
+function qrStop(){ clearInterval(qrTimer); qrTimer=null; }
+async function qrSend(kind){
+  const key=settings.shareKey||'';
+  if(!key){ gotoSettings('まず、共有の合言葉を決めてください'); return; }
+  if(typeof qrcode==='undefined'){ toast('QRコードの部品が読み込めていません'); return; }
+  if(!window.crypto||!crypto.subtle){ toast('この画面では包めません。https:// でお開きください'); return; }
+  let payload, label;
+  if(kind==='users'){
+    if(!users.length){ toast('利用者がいません'); return; }
+    payload={app:'day-kiroku',kind:'users',from:settings.device||'（名前なし）',at:new Date().toISOString(),users:users};
+    label='利用者 '+users.length+'名';
+  }else{
+    let recs=(await idbAll('records')).filter(r=>r.saved);
+    if(kind==='day'){ recs=recs.filter(r=>r.date===curDate); label=jpDate(curDate)+'の記録 '+recs.length+'件'; }
+    else{
+      const ym=$('#outMonth').value||curDate.slice(0,7);
+      recs=recs.filter(r=>r.date.slice(0,7)===ym);
+      label=ym.replace('-','年')+'月の記録 '+recs.length+'件';
+    }
+    if(!recs.length){ toast('渡す記録がありません'); return; }
+    payload={app:'day-kiroku',kind:'records',from:settings.device||'（名前なし）',at:new Date().toISOString(),records:recs};
+  }
+  let body;
+  try{ body=await wrap2(JSON.stringify(payload),key); }
+  catch(e){ toast('うまく包めませんでした'); return; }
+  const total=Math.ceil(body.length/QR_CHUNK);
+  if(total>30 && !confirm('QRコードが '+total+'枚 になります。\n読み取りに時間がかかります。\n\n日ごとに分けてお渡しになることをおすすめします。\nこのまま進めますか？')) return;
+  const sid=Math.random().toString(36).slice(2,6);
+  qrParts=[];
+  for(let i=0;i<total;i++) qrParts.push(QR_MARK+sid+':'+(i+1)+':'+total+':'+body.slice(i*QR_CHUNK,(i+1)*QR_CHUNK));
+  qrIdx=0; qrPaused=false;
+  $('#qrTitle').textContent=(kind==='users'?'利用者を渡す':'記録を渡す');
+  $('#qrHint').innerHTML='<b>'+esc(label)+'</b> を <b>'+total+'枚</b> のQRコードにしました。<br>'+
+    (total>1?'順番に切り替わります。相手の端末で読み取り続けてください。':'相手の端末で読み取ってください。');
+  $('#dlgQrSend').showModal();
+  qrShow();
+  if(total>1) qrStart();
+}
+$('#btnQrUsers').addEventListener('click',()=>qrSend('users'));
+$('#btnQrDay').addEventListener('click',()=>qrSend('day'));
+$('#btnQrMonth').addEventListener('click',()=>qrSend('month'));
+$('#qrSendClose').addEventListener('click',()=>{ qrStop(); $('#dlgQrSend').close(); });
+$('#qrPause').addEventListener('click',()=>{ qrPaused=!qrPaused; $('#qrPause').textContent=qrPaused?'すすめる':'とめる'; });
+$('#qrFaster').addEventListener('click',()=>{ qrSpeed=Math.max(300,qrSpeed-200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
+$('#qrSlower').addEventListener('click',()=>{ qrSpeed=Math.min(2000,qrSpeed+200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
+
+/* ===== QRコードを読み取る ===== */
+let scanStream=null, scanRAF=null, scanGot={}, scanSid='', scanTotal=0, scanCv=null;
+function scanReset(){ scanGot={}; scanSid=''; scanTotal=0; $('#scanOut').innerHTML=''; scanPaint(); }
+function scanPaint(){
+  if(!scanTotal){ $('#scanBar').innerHTML=''; $('#scanStep').textContent='カメラを向けてください'; return; }
+  const got=Object.keys(scanGot).length;
+  $('#scanStep').textContent=got+' / '+scanTotal+' 枚 読み取れました';
+  let h=''; for(let i=1;i<=scanTotal;i++) h+='<i class="'+(scanGot[i]?'on':'')+'"></i>';
+  $('#scanBar').innerHTML=h;
+}
+async function mergeIn(obj,where){
+  if(!obj||obj.app!=='day-kiroku'){
+    $(where).innerHTML='<div class="warnbox" style="margin-top:11px;">デイきろく帖のものではないようです。</div>';
+    return false;
+  }
+  let add=0,upd=0,dup=0,what='';
+  if(obj.kind==='users'&&Array.isArray(obj.users)){
+    what='利用者';
+    for(const u of obj.users){
+      if(!u||!u.id) continue;
+      const ex=users.find(x=>x.id===u.id);
+      if(!ex){ users.push(u); await idbPut('users',u); add++; }
+      else if((u.updatedAt||'')>(ex.updatedAt||'')){ Object.assign(ex,u); await idbPut('users',ex); upd++; }
+      else dup++;
+    }
+  }else if(obj.kind==='records'&&Array.isArray(obj.records)){
+    what='記録';
+    for(const r of obj.records){
+      if(!r||!r.key) continue;
+      const ex=await idbGet('records',r.key);
+      if(!ex){ await idbPut('records',r); add++; }
+      else if((r.updatedAt||'')>(ex.updatedAt||'')){ await idbPut('records',r); upd++; }
+      else dup++;
+    }
+  }else{
+    $(where).innerHTML='<div class="warnbox" style="margin-top:11px;">中身が読み取れませんでした。</div>';
+    return false;
+  }
+  $(where).innerHTML='<div class="okbox" style="margin-top:11px;"><b>'+
+    esc(obj.from||'')+' さんから '+esc(what)+' を受け取りました。</b><br>'+
+    'あたらしく入ったもの：'+add+'件<br>上書きしたもの：'+upd+'件<br>すでにあったもの：'+dup+'件<br>'+
+    '<b>この画面を、渡してくださった方にお見せください。</b></div>';
+  renderUsers(); await renderToday(); await renderSummary(); await renderQrCount(); await stat();
+  return true;
+}
+async function scanHandle(text){
+  if(!text||text.indexOf(QR_MARK)!==0) return;
+  const p=text.split(':');
+  if(p.length<6) return;
+  const sid=p[1], i=Number(p[2]), n=Number(p[3]);
+  const payload=text.slice((QR_MARK+sid+':'+p[2]+':'+p[3]+':').length);
+  if(!sid||!i||!n) return;
+  if(scanSid&&scanSid!==sid) scanReset();
+  scanSid=sid; scanTotal=n;
+  if(!scanGot[i]){ scanGot[i]=payload; scanPaint(); }
+  if(Object.keys(scanGot).length<n) return;
+  scanStop();
+  let body=''; for(let k=1;k<=n;k++) body+=scanGot[k];
+  let obj;
+  try{ obj=JSON.parse(await unwrap2(body,settings.shareKey||'')); }
+  catch(e){
+    $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;"><b>合言葉が合わないようです。</b><br>両方の端末で、同じ合言葉になっているかお確かめください。</div>';
+    return;
+  }
+  if(await mergeIn(obj,'#scanOut')){ toast('取り込みました'); $('#qrOut').innerHTML=$('#scanOut').innerHTML; }
+}
+function scanLoop(){
+  const v=$('#scanVideo');
+  if(v.readyState===v.HAVE_ENOUGH_DATA&&scanCv){
+    const w=480, h=Math.round(v.videoHeight/v.videoWidth*480)||480;
+    scanCv.width=w; scanCv.height=h;
+    const ctx=scanCv.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(v,0,0,w,h);
+    try{
+      const img=ctx.getImageData(0,0,w,h);
+      const code=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
+      if(code&&code.data) scanHandle(code.data);
+    }catch(e){}
+  }
+  scanRAF=requestAnimationFrame(scanLoop);
+}
+function scanStop(){
+  if(scanRAF){ cancelAnimationFrame(scanRAF); scanRAF=null; }
+  if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
+}
+$('#btnQrScan').addEventListener('click',async ()=>{
+  if(!settings.shareKey){ gotoSettings('まず、共有の合言葉を入れてください'); return; }
+  if(typeof jsQR==='undefined'){ toast('読み取りの部品が読み込めていません'); return; }
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast('この端末ではカメラが使えません'); return; }
+  scanReset();
+  $('#dlgQrScan').showModal();
+  try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); }
+  catch(e){
+    $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;">カメラを使えませんでした。<br>ブラウザの設定でカメラの使用を許可してください。</div>';
+    return;
+  }
+  const v=$('#scanVideo');
+  v.srcObject=scanStream; v.setAttribute('playsinline','');
+  try{ await v.play(); }catch(e){}
+  if(!scanCv) scanCv=document.createElement('canvas');
+  scanLoop();
+});
+$('#qrScanClose').addEventListener('click',()=>{ scanStop(); $('#dlgQrScan').close(); });
+
 /* ===== バックアップ ===== */
 $('#btnBackup').addEventListener('click',async ()=>{
   const data={app:'day-kiroku',ver:1,users:users,records:await idbAll('records'),settings:settings};
@@ -960,6 +1265,8 @@ async function stat(){
 /* ===== 設定 ===== */
 function fillSettings(){
   $('#setFac').value=settings.facility||'';
+  $('#setDevice').value=settings.device||'';
+  $('#setKey').value=settings.shareKey||'';
   $('#setIn').value=settings.defIn||''; $('#setOut').value=settings.defOut||'';
   $('#setWater').value=settings.water||1000;
   $('#setPrograms').value=(settings.programs||[]).join('\n');
@@ -967,8 +1274,14 @@ function fillSettings(){
   $('#lTempMax').value=L.tempMax; $('#lSpo2Min').value=L.spo2Min;
   $('#lBpHMax').value=L.bpHMax; $('#lBpHMin').value=L.bpHMin;
 }
+$('#keyEye').addEventListener('click',()=>{
+  const i=$('#setKey'); i.classList.toggle('show');
+  $('#keyEye').textContent=i.classList.contains('show')?'隠す':'見る';
+});
 $('#btnSaveFac').addEventListener('click',async ()=>{
   settings.facility=$('#setFac').value.trim();
+  settings.device=$('#setDevice').value.trim();
+  settings.shareKey=$('#setKey').value;
   settings.defIn=$('#setIn').value; settings.defOut=$('#setOut').value;
   settings.water=Number($('#setWater').value)||1000;
   await idbPut('meta',{k:'settings',v:settings});
@@ -1041,7 +1354,7 @@ $$('nav.tabs button').forEach(b=>b.addEventListener('click',async ()=>{
   b.classList.add('on');
   $$('.page').forEach(p=>p.classList.remove('on'));
   $('#p-'+b.dataset.tab).classList.add('on');
-  if(b.dataset.tab==='out'){ await renderSummary(); await stat(); }
+  if(b.dataset.tab==='out'){ await renderSummary(); await stat(); await renderQrCount(); }
   if(b.dataset.tab==='users') renderUsers();
   window.scrollTo(0,0);
 }));
@@ -1062,7 +1375,7 @@ buildMealScale('#scSide','mealSide');
   fillSettings(); buildPrograms(); renderUsers();
   $('#curDate').value=curDate;
   $('#outMonth').value=curDate.slice(0,7);
-  await renderToday(); await renderSummary(); await stat();
+  await renderToday(); await renderSummary(); await stat(); await renderQrCount();
 })();
 
 if('serviceWorker' in navigator){
