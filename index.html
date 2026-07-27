@@ -263,9 +263,23 @@ input.masked.show{-webkit-text-security:none;}
     <div class="card">
       <div class="outbox" id="sumText">—</div>
       <div class="row" style="margin-top:10px;">
-        <button class="btn sm" id="btnSumCopy">📋 コピー</button>
-        <button class="btn sm" id="btnSumShare">📤 共有（LINEなど）</button>
+        <button class="btn sm" id="btnSumCopy">🔒 包んでコピー</button>
+        <button class="btn sm" id="btnSumShare">🔒 包んで共有（LINEなど）</button>
       </div>
+      <p class="note" style="margin-top:9px;">
+        外に出る文は<b>かならず合言葉で包みます</b>。受け取った方は、下の欄に貼り付ければ読めます。
+        同じ事業所の端末どうしで渡すだけなら、<b>QRコードのほうが確実</b>です。
+      </p>
+    </div>
+
+    <h2 class="sec">届いた申し送りを読む</h2>
+    <div class="card">
+      <p class="note" style="margin-bottom:9px;">ほかの端末から届いた申し送りを、そのまま貼り付けてください。合言葉が合っていれば、読める形になります。</p>
+      <div class="fld" style="margin-bottom:9px;">
+        <textarea id="inMoushi" placeholder="ここに貼り付けてください" style="min-height:90px;font-family:ui-monospace,monospace;font-size:12.5px;"></textarea>
+      </div>
+      <button class="btn g wide" id="btnMoushiRead">読めるようにする</button>
+      <div id="moushiOut"></div>
     </div>
 
     <h2 class="sec">水分が足りていない方</h2>
@@ -928,12 +942,60 @@ async function renderSummary(){
       return '<tr><td>'+esc(u.name||'—')+'</td><td class="wlow">'+(r.water||0)+' ml</td><td>'+g+' ml</td></tr>';
     }).join('')+'</table></div>';
 }
-$('#btnSumCopy').addEventListener('click',()=>copyText($('#sumText').textContent).then(()=>toast('コピーしました')));
-$('#btnSumShare').addEventListener('click',()=>{
-  const t=$('#sumText').textContent;
-  if(navigator.share) navigator.share({text:t}).catch(()=>{});
-  else copyText(t).then(()=>toast('コピーしました。貼り付けてお使いください'));
+/* ===== 申し送りは、かならず合言葉で包んでから出す ===== */
+const MOUSHI='MOUSHI1:';
+async function packMoushi(){
+  const key=settings.shareKey||'';
+  if(!key){ gotoSettings('まず、共有の合言葉を決めてください'); return null; }
+  if(!window.crypto||!crypto.subtle){ toast('この画面では包めません。https:// でお開きください'); return null; }
+  const t=$('#sumText').textContent||'';
+  if(!t.trim()||t.indexOf('まだありません')>=0){ toast('送る申し送りがありません'); return null; }
+  try{
+    const body=await wrap2(t,key);
+    return '【申し送り】'+(settings.facility||'')+'\n'+MOUSHI+body+
+      '\n（アプリの「届いた申し送りを読む」に貼り付けてください）';
+  }catch(e){ toast('うまく包めませんでした'); return null; }
+}
+$('#btnSumCopy').addEventListener('click',async ()=>{
+  const p=await packMoushi(); if(!p) return;
+  copyText(p).then(()=>toast('包んでコピーしました'));
 });
+$('#btnSumShare').addEventListener('click',async ()=>{
+  const p=await packMoushi(); if(!p) return;
+  if(navigator.share) navigator.share({text:p}).catch(()=>{});
+  else copyText(p).then(()=>toast('包んでコピーしました。貼り付けてお送りください'));
+});
+async function readMoushi(){
+  const raw=($('#inMoushi').value||'').trim();
+  if(!raw){ toast('貼り付けてください'); return; }
+  const i=raw.indexOf(MOUSHI);
+  if(i<0){
+    $('#moushiOut').innerHTML='<div class="warnbox" style="margin-top:11px;">包まれた中身が見あたりません。届いた文の全体を、そのまま貼り付けてみてください。</div>';
+    return;
+  }
+  const m=raw.slice(i+MOUSHI.length).match(/^[\sA-Za-z0-9+/=]+/);
+  if(!m){
+    $('#moushiOut').innerHTML='<div class="warnbox" style="margin-top:11px;">中身を読み取れませんでした。</div>';
+    return;
+  }
+  const key=settings.shareKey||'';
+  if(!key){ gotoSettings('まず、共有の合言葉を入れてください'); return; }
+  let text;
+  try{ text=await unwrap2(m[0].replace(/\s/g,''),key); }
+  catch(e){
+    $('#moushiOut').innerHTML='<div class="warnbox" style="margin-top:11px;"><b>合言葉が合わないようです。</b><br>'+
+      '送った端末と、この端末の合言葉が同じかお確かめください。</div>';
+    return;
+  }
+  $('#moushiOut').innerHTML='<div class="okbox" style="margin-top:11px;">読めるようになりました。</div>'+
+    '<div class="outbox" style="margin-top:9px;max-height:none;">'+esc(text)+'</div>'+
+    '<button class="btn sm wide" id="btnMoushiCopy" style="margin-top:9px;">📋 この文をコピー</button>';
+  $('#inMoushi').value='';
+  $('#btnMoushiCopy').addEventListener('click',()=>copyText(text).then(()=>toast('コピーしました')));
+  toast('読めるようになりました');
+}
+$('#btnMoushiRead').addEventListener('click',readMoushi);
+$('#inMoushi').addEventListener('paste',()=>setTimeout(readMoushi,150));
 
 $('#btnCsv').addEventListener('click',async ()=>{
   const ym=$('#outMonth').value;
