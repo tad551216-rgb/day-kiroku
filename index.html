@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>デイきろく帖 | つくる手帖</title>
+<meta name="description" content="通所介護（デイサービス）の一日を1枚に記録するアプリ。来所から帰宅までの帯、バイタル、食事と水分、排泄、機能訓練やレクの参加まで。データは端末の中だけに保存されます。">
+<meta name="theme-color" content="#1B2A4A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="デイきろく帖">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --ink:#1B2A4A; --ink2:#3A4A66; --paper:#F3F1EA; --paper2:#ECE9DF;
+  --line:#D8D3C4; --line2:#B9B2A0; --verm:#C2603A; --verm2:#9F4A2B;
+  --green:#3D6B52; --green2:#EFF5F1; --muted:#7A7567; --white:#fff;
+  --warn:#FBF0EC; --blue:#35706B; --gold:#8A6A20;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+body{
+  font-family:-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;
+  background:var(--paper);color:var(--ink);line-height:1.7;font-size:15px;
+  background-image:linear-gradient(#E3DFD3 1px,transparent 1px),linear-gradient(90deg,#E3DFD3 1px,transparent 1px);
+  background-size:26px 26px;padding-bottom:80px;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px;color:var(--ink);}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--verm);outline-offset:2px;}
+
+header{background:var(--ink);color:#fff;padding:14px 16px;
+  padding-top:calc(14px + env(safe-area-inset-top));position:sticky;top:0;z-index:30;}
+header h1{font-size:21px;font-weight:700;letter-spacing:.04em;font-family:"Hiragino Mincho ProN",serif;}
+header .sub{font-size:11px;letter-spacing:.18em;color:#B9C4D6;margin-top:2px;}
+header .sub b{color:#fff;font-weight:400;letter-spacing:.02em;}
+
+nav.tabs{display:flex;background:var(--paper2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:29;}
+nav.tabs button{flex:1;background:none;border:none;padding:11px 4px 9px;font-size:13px;font-weight:700;
+  color:var(--ink2);border-bottom:3px solid transparent;}
+nav.tabs button.on{color:var(--verm);border-bottom-color:var(--verm);background:var(--paper);}
+
+.wrap{max-width:720px;margin:0 auto;padding:16px 14px 0;}
+.page{display:none;} .page.on{display:block;}
+h2.sec{font-size:15px;font-weight:700;margin:20px 0 8px;padding-left:9px;border-left:4px solid var(--verm);line-height:1.4;}
+h2.sec:first-child{margin-top:4px;}
+.card{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px;}
+.note{font-size:12.5px;color:var(--muted);line-height:1.8;}
+.note b{color:var(--ink2);}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  border:1.5px solid var(--line2);background:var(--white);color:var(--ink);
+  border-radius:9px;padding:11px 16px;font-size:14px;font-weight:700;}
+.btn.wide{width:100%;margin-bottom:8px;}
+.btn.p{background:var(--ink);color:#fff;border-color:var(--ink);}
+.btn.g{background:var(--green);color:#fff;border-color:var(--green);}
+.btn.sm{padding:7px 12px;font-size:13px;border-radius:8px;}
+.row{display:flex;gap:8px;flex-wrap:wrap;}
+.row>.btn{flex:1;min-width:130px;}
+
+.datebar{display:flex;align-items:center;gap:8px;background:var(--white);
+  border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin-bottom:12px;}
+.datebar input[type=date]{flex:1;border:none;background:none;font-size:16px;font-weight:700;min-width:0;}
+.datebar button{border:1px solid var(--line2);background:var(--white);border-radius:8px;width:36px;height:36px;font-size:15px;flex:none;}
+.daylabel{font-size:12.5px;color:var(--muted);margin:-4px 0 12px 2px;}
+
+.ulist{display:grid;gap:8px;}
+.urow{display:flex;align-items:center;gap:10px;background:var(--white);
+  border:1px solid var(--line);border-radius:11px;padding:11px 12px;text-align:left;width:100%;}
+.urow .nm{flex:1;min-width:0;}
+.urow .nm b{font-size:16px;display:block;line-height:1.4;}
+.urow .nm span{font-size:12px;color:var(--muted);}
+.urow .st{flex:none;font-size:11.5px;font-weight:700;border-radius:999px;padding:3px 10px;
+  border:1px solid var(--line);color:var(--muted);background:var(--paper);}
+.urow .st.done{background:var(--green2);color:var(--green);border-color:#CBDDD1;}
+.urow .st.now{background:#FDF6E7;color:var(--gold);border-color:#E8DBBB;}
+.urow .st.abs{background:var(--warn);color:var(--verm2);border-color:#E9CFC4;}
+.empty{text-align:center;color:var(--muted);font-size:13.5px;padding:26px 10px;line-height:1.9;}
+
+dialog{border:none;padding:0;background:none;max-width:100%;}
+dialog::backdrop{background:rgba(27,42,74,.6);}
+.sheet{background:var(--paper);width:min(680px,94vw);max-height:88vh;overflow:auto;border-radius:16px;padding:0 0 16px;}
+.sheet-head{position:sticky;top:0;background:var(--ink);color:#fff;padding:13px 16px;
+  display:flex;align-items:center;gap:10px;border-radius:16px 16px 0 0;z-index:2;}
+.sheet-head b{flex:1;font-size:17px;}
+.sheet-head button{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.5);
+  color:#fff;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:700;}
+.sheet-body{padding:14px;}
+
+/* 一日の帯 */
+.ribbon{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:14px 14px 12px;margin-bottom:12px;}
+.rb-times{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:end;margin-bottom:12px;}
+.rb-times .f label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:3px;}
+.rb-times .f input{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;
+  background:var(--paper);font-size:17px;font-weight:700;text-align:center;}
+.rb-times .arw{font-size:15px;color:var(--line2);padding-bottom:11px;}
+.bar{position:relative;height:34px;background:var(--paper2);border:1px solid var(--line);
+  border-radius:8px;overflow:hidden;}
+.bar .fill{position:absolute;left:0;top:0;bottom:0;background:var(--ink);border-radius:7px 0 0 7px;transition:width .2s;}
+.bar .tick{position:absolute;top:0;bottom:0;width:1px;background:rgba(0,0,0,.13);}
+.bar .mk{position:absolute;top:5px;width:22px;height:22px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:12px;
+  background:var(--white);border:1.5px solid var(--line2);transform:translateX(-11px);}
+.hrs{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:3px;}
+.kubun{margin-top:11px;border-radius:10px;padding:11px 13px;border:1.5px solid;font-size:14px;line-height:1.7;}
+.kubun.ok{background:var(--green2);border-color:#CBDDD1;color:var(--green);}
+.kubun.na{background:var(--paper2);border-color:var(--line);color:var(--muted);}
+.kubun.warn{background:var(--warn);border-color:#E9CFC4;color:var(--verm2);}
+.kubun b{display:block;font-size:17px;margin-bottom:1px;}
+.kubun small{display:block;font-size:11.5px;opacity:.85;margin-top:3px;line-height:1.65;}
+
+/* 水分のコップ */
+.cups{display:flex;flex-wrap:wrap;gap:5px;margin:9px 0;}
+.cups i{width:22px;height:27px;border:2px solid var(--line2);border-radius:3px 3px 8px 8px;
+  background:var(--white);position:relative;overflow:hidden;font-style:normal;}
+.cups i.on::after{content:"";position:absolute;left:0;right:0;bottom:0;height:70%;background:var(--blue);}
+.wsum{font-size:20px;font-weight:700;}
+.wsum small{font-size:12px;color:var(--muted);font-weight:400;}
+.wadd{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.wadd button{border:1.5px solid var(--line2);background:var(--white);border-radius:999px;
+  padding:7px 13px;font-size:13px;font-weight:700;}
+.wlow{color:var(--verm2);font-weight:700;}
+
+.vitals{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.vitals .f{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:8px 10px;}
+.vitals .f.full{grid-column:1/-1;}
+.vitals label{display:block;font-size:11.5px;color:var(--muted);font-weight:700;margin-bottom:2px;}
+.vitals input{width:100%;border:none;background:none;font-size:19px;font-weight:700;padding:2px 0;}
+.vitals .f.ng{border-color:var(--verm);background:var(--warn);}
+.vitals .unit{font-size:12px;color:var(--muted);font-weight:400;margin-left:3px;}
+.bp{display:flex;align-items:center;gap:4px;}
+.bp input{text-align:center;}
+.vwarn{background:var(--warn);border:1px solid #E9CFC4;border-radius:10px;padding:10px 12px;
+  font-size:13px;color:var(--verm2);line-height:1.75;margin-top:9px;}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;}
+.chips button{border:1.5px solid var(--line2);background:var(--white);border-radius:999px;
+  padding:8px 15px;font-size:13.5px;font-weight:700;color:var(--ink2);}
+.chips button.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+.chips.g button.on{background:var(--green);border-color:var(--green);}
+.chips.multi button.on{background:var(--blue);border-color:var(--blue);color:#fff;}
+
+.meal{display:grid;grid-template-columns:auto 1fr;gap:9px 11px;align-items:center;}
+.meal .lb{font-size:13.5px;font-weight:700;color:var(--ink2);white-space:nowrap;}
+.meal .sc{display:flex;gap:5px;}
+.meal .sc button{flex:1;border:1.5px solid var(--line2);background:var(--white);border-radius:8px;
+  padding:8px 0;font-size:13px;font-weight:700;color:var(--ink2);}
+.meal .sc button.on{background:var(--green);color:#fff;border-color:var(--green);}
+
+.cnt{display:flex;align-items:center;gap:10px;}
+.cnt button{width:40px;height:40px;border:1.5px solid var(--line2);background:var(--white);
+  border-radius:9px;font-size:19px;font-weight:700;}
+.cnt span{font-size:21px;font-weight:700;min-width:34px;text-align:center;}
+.cnt em{font-style:normal;font-size:13px;color:var(--muted);}
+
+.fld{margin-bottom:12px;}
+.fld>label{display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:4px;}
+.fld input[type=text],.fld input[type=time],.fld input[type=number],.fld select,.fld textarea{
+  width:100%;border:1px solid var(--line);border-radius:9px;padding:10px 11px;background:var(--white);}
+.fld textarea{min-height:74px;resize:vertical;line-height:1.7;}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.daysel{display:flex;gap:5px;}
+.daysel label{flex:1;text-align:center;border:1.5px solid var(--line2);border-radius:8px;
+  padding:8px 0;font-size:13px;font-weight:700;color:var(--ink2);background:var(--white);}
+.daysel label.on{background:var(--ink);color:#fff;border-color:var(--ink);}
+.daysel input{display:none;}
+
+.outbox{background:var(--white);border:1px solid var(--line);border-radius:10px;padding:11px;
+  font-size:12.5px;white-space:pre-wrap;word-break:break-all;max-height:190px;overflow:auto;
+  line-height:1.75;font-family:ui-monospace,monospace;}
+table.tbl{width:100%;border-collapse:collapse;font-size:12.5px;}
+table.tbl th,table.tbl td{border:1px solid var(--line);padding:6px 7px;text-align:left;vertical-align:top;}
+table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
+  background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
+  opacity:0;pointer-events:none;transition:.22s;z-index:100;max-width:88vw;text-align:center;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+
+.warnbox{background:var(--warn);border:1px solid #E9CFC4;border-radius:10px;padding:11px 13px;
+  font-size:12.5px;color:var(--verm2);line-height:1.85;}
+.okbox{background:var(--green2);border:1px solid #CBDDD1;border-radius:10px;padding:11px 13px;
+  font-size:12.5px;color:var(--green);line-height:1.85;}
+
+@media print{ body{background:none;padding:0;} header,nav.tabs,.noprint{display:none !important;} .wrap{max-width:none;padding:0;} }
+@media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>デイきろく帖</h1>
+  <div class="sub">TSUKURU TECHO ｜ <b>通所介護の一日の記録</b></div>
+</header>
+
+<nav class="tabs" role="tablist">
+  <button class="on" data-tab="today" role="tab">きょう</button>
+  <button data-tab="users" role="tab">利用者</button>
+  <button data-tab="out" role="tab">出力</button>
+  <button data-tab="set" role="tab">設定</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- きょう -->
+  <section class="page on" id="p-today">
+    <div class="datebar">
+      <button id="dPrev" aria-label="前の日">‹</button>
+      <input type="date" id="curDate">
+      <button id="dNext" aria-label="次の日">›</button>
+      <button id="dToday" style="width:auto;padding:0 11px;font-size:13px;font-weight:700;">今日</button>
+    </div>
+    <p class="daylabel" id="dayLabel"></p>
+    <div class="ulist" id="todayList"></div>
+  </section>
+
+  <!-- 利用者 -->
+  <section class="page" id="p-users">
+    <h2 class="sec">利用者</h2>
+    <button class="btn p wide" id="btnUserAdd">＋ 利用者を追加する</button>
+    <div class="ulist" id="userList"></div>
+    <p class="note" style="margin-top:12px;">氏名のかわりに呼び名だけで運用することもできます。</p>
+  </section>
+
+  <!-- 出力 -->
+  <section class="page" id="p-out">
+    <h2 class="sec">きょうの申し送り</h2>
+    <div class="card">
+      <div class="outbox" id="sumText">—</div>
+      <div class="row" style="margin-top:10px;">
+        <button class="btn sm" id="btnSumCopy">📋 コピー</button>
+        <button class="btn sm" id="btnSumShare">📤 共有（LINEなど）</button>
+      </div>
+    </div>
+
+    <h2 class="sec">水分が足りていない方</h2>
+    <div class="card">
+      <p class="note" style="margin-bottom:9px;">選んでいる日で、目標に届かなかった方を並べます。とくに夏場の確認にお使いください。</p>
+      <div id="waterList"></div>
+    </div>
+
+    <h2 class="sec">月ごとの記録</h2>
+    <div class="card">
+      <div class="fld"><label for="outMonth">対象の月</label><input type="month" id="outMonth"></div>
+      <button class="btn wide" id="btnCsv">📄 記録をCSVで保存する</button>
+      <button class="btn wide" id="btnPrint">🖨 提供記録を印刷する</button>
+      <p class="note">CSVはExcelでそのまま開けます。</p>
+    </div>
+
+    <h2 class="sec">バックアップ</h2>
+    <div class="card">
+      <p class="note" style="margin-bottom:9px;">通所介護の記録は、完結の日から<b>2年間</b>の保存が必要です（自治体の条例で5年としている場合があります）。月に一度はファイルに保存し、別の場所にも控えを置いてください。</p>
+      <button class="btn wide" id="btnBackup">💾 すべての記録をJSONで保存する</button>
+      <button class="btn wide" id="btnRestore">📥 JSONから復元する</button>
+      <input type="file" id="fileRestore" accept=".json,application/json" style="display:none;">
+      <p class="note" id="dataStat"></p>
+    </div>
+  </section>
+
+  <!-- 設定 -->
+  <section class="page" id="p-set">
+    <h2 class="sec">事業所</h2>
+    <div class="card">
+      <div class="fld"><label for="setFac">事業所の名前</label><input type="text" id="setFac" placeholder="例：デイサービス みどりの里"></div>
+      <div class="two">
+        <div class="fld"><label for="setIn">ふだんの来所</label><input type="time" id="setIn"></div>
+        <div class="fld"><label for="setOut">ふだんの帰宅</label><input type="time" id="setOut"></div>
+      </div>
+      <div class="fld"><label for="setWater">水分の目標（ml／日）</label><input type="number" id="setWater" placeholder="1000"></div>
+      <button class="btn g" id="btnSaveFac">保存する</button>
+    </div>
+
+    <h2 class="sec">きょうの活動メニュー</h2>
+    <div class="card">
+      <p class="note" style="margin-bottom:9px;">記録のときに選べる、機能訓練やレクの名前です。1行に1つ書いてください。</p>
+      <div class="fld"><textarea id="setPrograms" style="min-height:150px;"></textarea></div>
+      <button class="btn g" id="btnSaveProg">保存する</button>
+    </div>
+
+    <h2 class="sec">体調で気をつける目安</h2>
+    <div class="card">
+      <div class="warnbox" style="margin-bottom:12px;">
+        入力したバイタルがこの目安から外れたとき、画面でお知らせします。<b>このアプリが受け入れの可否を判断することはありません。</b>数値は看護職員と相談して決めてください。
+      </div>
+      <div class="two">
+        <div class="fld"><label for="lTempMax">体温 これ以上（℃）</label><input type="number" step="0.1" id="lTempMax"></div>
+        <div class="fld"><label for="lSpo2Min">SpO₂ これ未満（％）</label><input type="number" id="lSpo2Min"></div>
+        <div class="fld"><label for="lBpHMax">上の血圧 これ以上</label><input type="number" id="lBpHMax"></div>
+        <div class="fld"><label for="lBpHMin">上の血圧 これ未満</label><input type="number" id="lBpHMin"></div>
+      </div>
+      <button class="btn g" id="btnSaveLimit">保存する</button>
+    </div>
+
+    <h2 class="sec">このアプリについて</h2>
+    <div class="card">
+      <div class="okbox" style="margin-bottom:11px;">
+        入力した内容は<b>すべてこの端末の中だけ</b>に保存されます。端末を初期化すると記録も消えますので、必ずバックアップをお取りください。
+      </div>
+      <button class="btn wide" id="btnSample">🧪 サンプルデータを入れて試す</button>
+      <button class="btn wide" id="btnClear">🗑 すべてのデータを消す</button>
+      <p class="note">つくる手帖 ／ デイきろく帖</p>
+    </div>
+  </section>
+</div>
+
+<!-- 記録シート -->
+<dialog id="dlgRec">
+  <div class="sheet">
+    <div class="sheet-head"><b id="recName">—</b><button id="recClose">閉じる</button></div>
+    <div class="sheet-body">
+
+      <h2 class="sec">一日の帯</h2>
+      <div class="ribbon">
+        <div class="rb-times">
+          <div class="f"><label for="rIn">来所</label><input type="time" id="rIn"></div>
+          <div class="arw">→</div>
+          <div class="f"><label for="rOut">帰宅</label><input type="time" id="rOut"></div>
+        </div>
+        <div class="bar" id="bar"></div>
+        <div class="hrs" id="hrs"></div>
+        <div class="kubun na" id="kubun"><b>時間を入れてください</b>帯の長さが、そのまま算定時間の目安になります。</div>
+      </div>
+      <div class="fld">
+        <label>この日の利用</label>
+        <div class="chips" id="chAttend">
+          <button data-v="来所">来所</button>
+          <button data-v="欠席">欠席</button>
+          <button data-v="中止">中止</button>
+        </div>
+      </div>
+      <div class="fld" id="wrapAbsNote" style="display:none;">
+        <label for="rAbsNote">欠席・中止の理由</label>
+        <input type="text" id="rAbsNote" placeholder="例：発熱のためご家族から連絡あり。">
+      </div>
+
+      <div id="bodyMain">
+      <h2 class="sec">来所時のバイタル</h2>
+      <div class="vitals">
+        <div class="f" id="fTemp"><label for="vTemp">体温<span class="unit">℃</span></label><input type="number" step="0.1" inputmode="decimal" id="vTemp" placeholder="36.5"></div>
+        <div class="f" id="fSpo2"><label for="vSpo2">SpO₂<span class="unit">％</span></label><input type="number" inputmode="numeric" id="vSpo2" placeholder="98"></div>
+        <div class="f full" id="fBp"><label>血圧<span class="unit">mmHg（上／下）</span></label>
+          <div class="bp"><input type="number" inputmode="numeric" id="vBpH" placeholder="128"><span>／</span><input type="number" inputmode="numeric" id="vBpL" placeholder="76"></div>
+        </div>
+        <div class="f"><label for="vPulse">脈拍<span class="unit">回/分</span></label><input type="number" inputmode="numeric" id="vPulse" placeholder="72"></div>
+        <div class="f"><label for="vWeight">体重<span class="unit">kg・任意</span></label><input type="number" step="0.1" inputmode="decimal" id="vWeight"></div>
+      </div>
+      <div class="vwarn" id="vWarn" style="display:none;"></div>
+
+      <h2 class="sec">食事</h2>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="meal">
+          <span class="lb">主食</span>
+          <span class="sc" id="scMain"></span>
+          <span class="lb">副食</span>
+          <span class="sc" id="scSide"></span>
+        </div>
+        <p class="note" style="margin-top:8px;">10段階ではなく、割合でざっくり選べます。</p>
+      </div>
+
+      <h2 class="sec">水分</h2>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="wsum"><span id="wTotal">0</span><small> ml　／ 目標 <span id="wGoal">1000</span> ml</small></div>
+        <div class="cups" id="cups"></div>
+        <div class="wadd">
+          <button data-w="50">＋50</button><button data-w="100">＋100</button>
+          <button data-w="150">＋150</button><button data-w="200">＋200</button>
+          <button data-w="-100" style="color:var(--verm2);">−100</button>
+          <button data-w="0" style="color:var(--muted);">リセット</button>
+        </div>
+      </div>
+
+      <h2 class="sec">排泄</h2>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="two">
+          <div><label class="note" style="font-weight:700;">尿</label>
+            <div class="cnt"><button data-p="urine" data-d="-1">−</button><span id="cUrine">0</span><em>回</em><button data-p="urine" data-d="1">＋</button></div></div>
+          <div><label class="note" style="font-weight:700;">便</label>
+            <div class="cnt"><button data-p="stool" data-d="-1">−</button><span id="cStool">0</span><em>回</em><button data-p="stool" data-d="1">＋</button></div></div>
+        </div>
+        <div class="fld" style="margin:10px 0 0;"><input type="text" id="rToiletNote" placeholder="失禁・便性など、気づいたこと"></div>
+      </div>
+
+      <h2 class="sec">入浴</h2>
+      <div class="fld">
+        <div class="chips g" id="chBath">
+          <button data-v="一般浴">一般浴</button>
+          <button data-v="機械浴">機械浴</button>
+          <button data-v="シャワー浴">シャワー浴</button>
+          <button data-v="清拭">清拭</button>
+          <button data-v="なし">なし</button>
+        </div>
+      </div>
+
+      <h2 class="sec">きょうの活動</h2>
+      <div class="fld">
+        <div class="chips multi" id="chProg"></div>
+        <p class="note" style="margin-top:7px;">いくつでも選べます。項目は設定タブで変えられます。</p>
+      </div>
+
+      <h2 class="sec">ようす</h2>
+      <div class="fld">
+        <div class="chips g" id="chCond">
+          <button data-v="お変わりなし">お変わりなし</button>
+          <button data-v="いつもよりお元気">いつもよりお元気</button>
+          <button data-v="疲れが見られた">疲れが見られた</button>
+          <button data-v="表情が硬い">表情が硬い</button>
+          <button data-v="体調不良">体調不良</button>
+        </div>
+      </div>
+      <div class="fld">
+        <label style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="rMed" style="width:20px;height:20px;">おくすりをお渡し・確認しました
+        </label>
+      </div>
+      <div class="fld"><label for="rMemo">気づいたこと</label><textarea id="rMemo" placeholder="例：塗り絵に集中され、40分ほど取り組まれる。"></textarea></div>
+      <div class="fld"><label for="rStaff">担当した職員</label><input type="text" id="rStaff" placeholder="例：山田"></div>
+
+      <h2 class="sec">ご家族への連絡</h2>
+      <div class="fld"><textarea id="rRenraku" placeholder="例：本日もお元気に過ごされました。お昼はしっかり召し上がっています。"></textarea></div>
+      </div>
+
+      <div class="row noprint">
+        <button class="btn g" id="btnRecSave" style="flex:2;">保存する</button>
+        <button class="btn" id="btnRecCopy">📋 連絡文をコピー</button>
+      </div>
+      <button class="btn sm wide" id="btnRecDel" style="margin-top:10px;color:var(--verm2);border-color:#E9CFC4;">この日の記録を消す</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- 利用者編集 -->
+<dialog id="dlgUser">
+  <div class="sheet" style="width:min(560px,94vw);">
+    <div class="sheet-head"><b id="userTitle">利用者</b><button id="userClose">閉じる</button></div>
+    <div class="sheet-body">
+      <div class="fld"><label for="uName">お名前</label><input type="text" id="uName" placeholder="例：松本 静江"></div>
+      <div class="two">
+        <div class="fld"><label for="uKana">ふりがな</label><input type="text" id="uKana"></div>
+        <div class="fld"><label for="uKaigo">要介護度</label>
+          <select id="uKaigo"><option value="">—</option>
+            <option>要支援1</option><option>要支援2</option><option>要介護1</option><option>要介護2</option>
+            <option>要介護3</option><option>要介護4</option><option>要介護5</option></select>
+        </div>
+      </div>
+      <div class="two">
+        <div class="fld"><label for="uIn">ふだんの来所</label><input type="time" id="uIn"></div>
+        <div class="fld"><label for="uOut">ふだんの帰宅</label><input type="time" id="uOut"></div>
+      </div>
+      <div class="fld">
+        <label>ご利用の曜日</label>
+        <div class="daysel" id="uDays">
+          <label data-d="1"><input type="checkbox">月</label><label data-d="2"><input type="checkbox">火</label>
+          <label data-d="3"><input type="checkbox">水</label><label data-d="4"><input type="checkbox">木</label>
+          <label data-d="5"><input type="checkbox">金</label><label data-d="6"><input type="checkbox">土</label>
+        </div>
+      </div>
+      <div class="fld"><label for="uWater">水分の目標（ml・空欄なら共通の目標）</label><input type="number" id="uWater"></div>
+      <div class="fld"><label for="uMemo">気をつけること</label><textarea id="uMemo" placeholder="例：とろみ剤を使用。むせ込みに注意。"></textarea></div>
+      <div class="row">
+        <button class="btn g" id="btnUserSave" style="flex:2;">保存する</button>
+        <button class="btn" id="btnUserDel">削除</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+const DB_NAME='day-kiroku-db', DB_VER=1;
+let db=null;
+function openDB(){
+  return new Promise((res,rej)=>{
+    const rq=indexedDB.open(DB_NAME,DB_VER);
+    rq.onupgradeneeded=e=>{
+      const d=e.target.result;
+      if(!d.objectStoreNames.contains('users')) d.createObjectStore('users',{keyPath:'id'});
+      if(!d.objectStoreNames.contains('records')){
+        const st=d.createObjectStore('records',{keyPath:'key'});
+        st.createIndex('date','date',{unique:false});
+      }
+      if(!d.objectStoreNames.contains('meta')) d.createObjectStore('meta',{keyPath:'k'});
+    };
+    rq.onsuccess=e=>{db=e.target.result;res();};
+    rq.onerror=()=>rej(rq.error);
+  });
+}
+function tx(s,m){ return db.transaction(s,m).objectStore(s); }
+function idbPut(s,v){ return new Promise((res,rej)=>{const r=tx(s,'readwrite').put(v);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);}); }
+function idbDel(s,k){ return new Promise((res,rej)=>{const r=tx(s,'readwrite').delete(k);r.onsuccess=()=>res();r.onerror=()=>rej(r.error);}); }
+function idbAll(s){ return new Promise((res,rej)=>{const r=tx(s,'readonly').getAll();r.onsuccess=()=>res(r.result||[]);r.onerror=()=>rej(r.error);}); }
+function idbGet(s,k){ return new Promise((res,rej)=>{const r=tx(s,'readonly').get(k);r.onsuccess=()=>res(r.result||null);r.onerror=()=>rej(r.error);}); }
+function idbClear(s){ return new Promise((res,rej)=>{const r=tx(s,'readwrite').clear();r.onsuccess=()=>res();r.onerror=()=>rej(r.error);}); }
+
+const DEF_PROG=['体操（全身）','口腔体操','歩行訓練','立ち上がり訓練','個別機能訓練',
+  'レクリエーション','塗り絵・書道','音楽','園芸','調理','外気浴','趣味活動'];
+const DEF_LIMIT={tempMax:37.5,spo2Min:93,bpHMax:160,bpHMin:90};
+const MEAL_STEPS=[0,3,5,8,10];
+let users=[], settings={facility:'',defIn:'09:30',defOut:'16:00',water:1000,
+  programs:DEF_PROG.slice(),limits:Object.assign({},DEF_LIMIT)};
+let curDate=todayStr(), curRec=null, curUser=null, editingUser=null;
+let seq=Date.now()%100000;
+
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toast._t);toast._t=setTimeout(()=>t.classList.remove('show'),2200);}
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function wday(ds){const p=ds.split('-').map(Number);return new Date(p[0],p[1]-1,p[2]).getDay();}
+const WD=['日','月','火','水','木','金','土'];
+function jpDate(ds){const p=ds.split('-').map(Number);return p[1]+'月'+p[2]+'日('+WD[wday(ds)]+')';}
+function shiftDate(ds,n){const p=ds.split('-').map(Number);const d=new Date(p[0],p[1]-1,p[2]+n);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function hm2min(t){ if(!t||!/^\d{1,2}:\d{2}$/.test(t)) return null; const p=t.split(':').map(Number); return p[0]*60+p[1]; }
+
+/* ===== 算定時間区分（目安） ===== */
+function kubunOf(inT,outT){
+  const a=hm2min(inT), b=hm2min(outT);
+  if(a==null||b==null) return null;
+  let m=b-a; if(m<0) m+=1440;
+  if(m<=0) return {min:0,label:'',kind:'warn',msg:'帰宅が来所より前になっています'};
+  if(m<120) return {min:m,label:'2時間未満',kind:'warn',msg:'2時間未満は、通常の区分では算定できません'};
+  const T=[[120,180,'2時間以上3時間未満'],[180,240,'3時間以上4時間未満'],[240,300,'4時間以上5時間未満'],
+    [300,360,'5時間以上6時間未満'],[360,420,'6時間以上7時間未満'],[420,480,'7時間以上8時間未満'],
+    [480,540,'8時間以上9時間未満']];
+  for(const t of T){ if(m>=t[0]&&m<t[1]) return {min:m,label:t[2],kind:'ok',msg:''}; }
+  return {min:m,label:'9時間以上',kind:'warn',msg:'9時間を超えています。延長のお取り扱いをご確認ください'};
+}
+function minLabel(m){ return Math.floor(m/60)+'時間'+(m%60?String(m%60)+'分':''); }
+
+function drawRibbon(){
+  const inT=$('#rIn').value, outT=$('#rOut').value;
+  const k=kubunOf(inT,outT);
+  const bar=$('#bar'), hrs=$('#hrs'), kb=$('#kubun');
+  const MAX=540; // 9時間で満杯
+  let html='';
+  for(let h=1;h<=8;h++) html+='<div class="tick" style="left:'+(h*60/MAX*100)+'%"></div>';
+  if(k&&k.min>0){
+    const w=Math.min(100,k.min/MAX*100);
+    html+='<div class="fill" style="width:'+w+'%"></div>';
+    const a=hm2min(inT);
+    const put=(t,ic)=>{
+      const mm=hm2min(t); if(mm==null||a==null) return '';
+      let d=mm-a; if(d<0) d+=1440;
+      if(d<0||d>k.min) return '';
+      return '<div class="mk" style="left:'+Math.min(100,d/MAX*100)+'%">'+ic+'</div>';
+    };
+    html+=put('12:00','🍚');
+  }
+  bar.innerHTML=html;
+  hrs.innerHTML=['0','1','2','3','4','5','6','7','8','9時間'].map(x=>'<span>'+x+'</span>').join('');
+  if(!k){ kb.className='kubun na'; kb.innerHTML='<b>時間を入れてください</b>帯の長さが、そのまま算定時間の目安になります。'; return; }
+  kb.className='kubun '+(k.kind==='ok'?'ok':'warn');
+  kb.innerHTML='<b>'+esc(k.label||'—')+'</b>実際の滞在は '+minLabel(k.min)+' です。'+
+    (k.msg?'<br>'+esc(k.msg):'')+
+    '<small>※ 算定はご利用の計画にある所要時間が原則です。ここに出る区分は実際の時間からの目安ですので、請求前に必ずご確認ください。</small>';
+}
+$('#rIn').addEventListener('input',drawRibbon);
+$('#rOut').addEventListener('input',drawRibbon);
+
+/* ===== バイタル ===== */
+function checkVitals(r){
+  const L=settings.limits, out=[];
+  const n=v=>(v===''||v==null)?null:Number(v);
+  const t=n(r.temp),s=n(r.spo2),h=n(r.bpH);
+  if(t!=null&&t>=L.tempMax) out.push('体温 '+t+'℃');
+  if(s!=null&&s<L.spo2Min) out.push('SpO₂ '+s+'％');
+  if(h!=null&&h>=L.bpHMax) out.push('上の血圧 '+h);
+  if(h!=null&&h<L.bpHMin) out.push('上の血圧 '+h);
+  return out;
+}
+function paintVitals(){
+  const r={temp:$('#vTemp').value,spo2:$('#vSpo2').value,bpH:$('#vBpH').value};
+  const list=checkVitals(r), w=$('#vWarn');
+  ['#fTemp','#fSpo2','#fBp'].forEach(s=>$(s).classList.remove('ng'));
+  if(!list.length){ w.style.display='none'; return; }
+  w.style.display=''; w.innerHTML='⚠ 目安から外れています：'+list.map(esc).join('、')+'<br>看護職員にご確認ください。';
+  const L=settings.limits,n=v=>(v===''||v==null)?null:Number(v);
+  if(n(r.temp)!=null&&n(r.temp)>=L.tempMax) $('#fTemp').classList.add('ng');
+  if(n(r.spo2)!=null&&n(r.spo2)<L.spo2Min) $('#fSpo2').classList.add('ng');
+  if(n(r.bpH)!=null&&(n(r.bpH)>=L.bpHMax||n(r.bpH)<L.bpHMin)) $('#fBp').classList.add('ng');
+}
+['#vTemp','#vSpo2','#vBpH'].forEach(s=>$(s).addEventListener('input',paintVitals));
+
+/* ===== 食事・水分・排泄 ===== */
+function buildMealScale(sel,key){
+  $(sel).innerHTML=MEAL_STEPS.map(v=>'<button data-v="'+v+'">'+(v===10?'全':v)+'</button>').join('');
+  $$(sel+' button').forEach(b=>b.addEventListener('click',()=>{
+    const was=b.classList.contains('on');
+    $$(sel+' button').forEach(x=>x.classList.remove('on'));
+    if(!was){ b.classList.add('on'); curRec[key]=b.dataset.v; } else curRec[key]='';
+  }));
+}
+function setMeal(sel,val){ $$(sel+' button').forEach(b=>b.classList.toggle('on',String(b.dataset.v)===String(val))); }
+function waterGoal(){ return (curUser&&curUser.water)?Number(curUser.water):Number(settings.water||1000); }
+function drawWater(){
+  const total=Number(curRec.water||0), goal=waterGoal();
+  $('#wTotal').textContent=total; $('#wGoal').textContent=goal;
+  const n=Math.max(Math.ceil(goal/100),1);
+  const filled=Math.floor(total/100);
+  let h=''; for(let i=0;i<Math.max(n,filled);i++) h+='<i class="'+(i<filled?'on':'')+'"></i>';
+  $('#cups').innerHTML=h;
+  $('#wTotal').className = total<goal ? 'wlow' : '';
+}
+$$('.wadd button').forEach(b=>b.addEventListener('click',()=>{
+  const v=Number(b.dataset.w);
+  if(v===0) curRec.water=0; else curRec.water=Math.max(0,Number(curRec.water||0)+v);
+  drawWater();
+}));
+$$('.cnt button').forEach(b=>b.addEventListener('click',()=>{
+  const p=b.dataset.p, d=Number(b.dataset.d);
+  curRec[p]=Math.max(0,Number(curRec[p]||0)+d);
+  $('#c'+p.charAt(0).toUpperCase()+p.slice(1)).textContent=curRec[p];
+}));
+
+/* ===== チップ ===== */
+function setChips(sel,val){ $$(sel+' button').forEach(b=>b.classList.toggle('on',b.dataset.v===val)); }
+function getChips(sel){ const b=document.querySelector(sel+' button.on'); return b?b.dataset.v:''; }
+function initChips(sel,cb){
+  $$(sel+' button').forEach(b=>b.addEventListener('click',()=>{
+    const was=b.classList.contains('on');
+    $$(sel+' button').forEach(x=>x.classList.remove('on'));
+    if(!was) b.classList.add('on');
+    if(cb) cb(was?'':b.dataset.v);
+  }));
+}
+function buildPrograms(){
+  $('#chProg').innerHTML=(settings.programs||[]).map(p=>'<button data-v="'+esc(p)+'">'+esc(p)+'</button>').join('');
+  $$('#chProg button').forEach(b=>b.addEventListener('click',()=>b.classList.toggle('on')));
+}
+function setMulti(sel,arr){ $$(sel+' button').forEach(b=>b.classList.toggle('on',(arr||[]).includes(b.dataset.v))); }
+function getMulti(sel){ return $$(sel+' button.on').map(b=>b.dataset.v); }
+
+initChips('#chAttend',v=>{
+  $('#wrapAbsNote').style.display=(v==='欠席'||v==='中止')?'':'none';
+  $('#bodyMain').style.display=(v==='欠席'||v==='中止')?'none':'';
+});
+initChips('#chBath'); initChips('#chCond');
+
+/* ===== 記録シート ===== */
+function blankRec(date,uid,u){
+  return {key:date+'_'+uid,date:date,userId:uid,attend:'来所',absNote:'',
+    inTime:(u&&u.defIn)||settings.defIn||'',outTime:(u&&u.defOut)||settings.defOut||'',
+    temp:'',spo2:'',bpH:'',bpL:'',pulse:'',weight:'',
+    mealMain:'',mealSide:'',water:0,urine:0,stool:0,toiletNote:'',
+    bath:'',progs:[],cond:'',med:false,memo:'',staff:'',renraku:'',saved:false};
+}
+async function openRec(uid){
+  curUser=users.find(u=>u.id===uid); if(!curUser) return;
+  curRec=await idbGet('records',curDate+'_'+uid) || blankRec(curDate,uid,curUser);
+  $('#recName').textContent=(curUser.name||'—')+'　'+jpDate(curDate);
+  setChips('#chAttend',curRec.attend||'来所');
+  $('#rAbsNote').value=curRec.absNote||'';
+  $('#wrapAbsNote').style.display=(curRec.attend==='欠席'||curRec.attend==='中止')?'':'none';
+  $('#bodyMain').style.display=(curRec.attend==='欠席'||curRec.attend==='中止')?'none':'';
+  $('#rIn').value=curRec.inTime||''; $('#rOut').value=curRec.outTime||'';
+  $('#vTemp').value=curRec.temp||''; $('#vSpo2').value=curRec.spo2||'';
+  $('#vBpH').value=curRec.bpH||''; $('#vBpL').value=curRec.bpL||'';
+  $('#vPulse').value=curRec.pulse||''; $('#vWeight').value=curRec.weight||'';
+  setMeal('#scMain',curRec.mealMain); setMeal('#scSide',curRec.mealSide);
+  $('#cUrine').textContent=curRec.urine||0; $('#cStool').textContent=curRec.stool||0;
+  $('#rToiletNote').value=curRec.toiletNote||'';
+  setChips('#chBath',curRec.bath||'');
+  setMulti('#chProg',curRec.progs);
+  setChips('#chCond',curRec.cond||'');
+  $('#rMed').checked=!!curRec.med;
+  $('#rMemo').value=curRec.memo||''; $('#rStaff').value=curRec.staff||'';
+  $('#rRenraku').value=curRec.renraku||'';
+  drawRibbon(); paintVitals(); drawWater();
+  $('#dlgRec').showModal();
+}
+function collectRec(){
+  curRec.attend=getChips('#chAttend')||'来所'; curRec.absNote=$('#rAbsNote').value.trim();
+  curRec.inTime=$('#rIn').value; curRec.outTime=$('#rOut').value;
+  curRec.temp=$('#vTemp').value; curRec.spo2=$('#vSpo2').value;
+  curRec.bpH=$('#vBpH').value; curRec.bpL=$('#vBpL').value;
+  curRec.pulse=$('#vPulse').value; curRec.weight=$('#vWeight').value;
+  curRec.toiletNote=$('#rToiletNote').value.trim();
+  curRec.bath=getChips('#chBath'); curRec.progs=getMulti('#chProg');
+  curRec.cond=getChips('#chCond'); curRec.med=$('#rMed').checked;
+  curRec.memo=$('#rMemo').value.trim(); curRec.staff=$('#rStaff').value.trim();
+  curRec.renraku=$('#rRenraku').value.trim();
+}
+$('#recClose').addEventListener('click',()=>$('#dlgRec').close());
+$('#btnRecSave').addEventListener('click',async ()=>{
+  collectRec(); curRec.saved=true;
+  await idbPut('records',curRec);
+  $('#dlgRec').close(); await renderToday(); await renderSummary();
+  toast('保存しました');
+});
+$('#btnRecDel').addEventListener('click',async ()=>{
+  if(!confirm('この日の記録を消します。よろしいですか？')) return;
+  await idbDel('records',curRec.key);
+  $('#dlgRec').close(); await renderToday(); await renderSummary();
+  toast('消しました');
+});
+$('#btnRecCopy').addEventListener('click',()=>{ collectRec(); copyText(recText(curUser,curRec)).then(()=>toast('コピーしました')); });
+
+function recText(u,r){
+  const L=['【'+jpDate(r.date)+'　'+(u.name||'')+' 様】'];
+  if(r.attend&&r.attend!=='来所'){ L.push(r.attend+(r.absNote?'：'+r.absNote:'')); return L.join('\n'); }
+  const k=kubunOf(r.inTime,r.outTime);
+  if(k) L.push('ご利用：'+r.inTime+'〜'+r.outTime+'（'+k.label+'）');
+  const v=[];
+  if(r.temp) v.push('体温'+r.temp+'℃');
+  if(r.bpH||r.bpL) v.push('血圧'+(r.bpH||'-')+'/'+(r.bpL||'-'));
+  if(r.pulse) v.push('脈拍'+r.pulse);
+  if(r.spo2) v.push('SpO2 '+r.spo2+'%');
+  if(v.length) L.push('バイタル：'+v.join('　'));
+  if(r.mealMain!==''||r.mealSide!=='') L.push('食事：主食'+(r.mealMain===''?'—':r.mealMain)+'／副食'+(r.mealSide===''?'—':r.mealSide));
+  if(r.water) L.push('水分：'+r.water+'ml');
+  if(r.urine||r.stool) L.push('排泄：尿'+(r.urine||0)+'回／便'+(r.stool||0)+'回'+(r.toiletNote?'（'+r.toiletNote+'）':''));
+  if(r.bath&&r.bath!=='なし') L.push('入浴：'+r.bath);
+  if(r.progs&&r.progs.length) L.push('活動：'+r.progs.join('、'));
+  if(r.cond) L.push('ようす：'+r.cond);
+  if(r.memo) L.push(r.memo);
+  if(r.renraku) L.push('ご家族へ：'+r.renraku);
+  return L.join('\n');
+}
+
+/* ===== きょうの一覧 ===== */
+async function renderToday(){
+  $('#curDate').value=curDate;
+  $('#dayLabel').textContent=jpDate(curDate)+'　'+(settings.facility||'');
+  if(!users.length){
+    $('#todayList').innerHTML='<p class="empty">まだ利用者が登録されていません。<br>「利用者」タブから登録するか、<br>「設定」タブでサンプルデータをお試しください。</p>';
+    return;
+  }
+  const wd=wday(curDate);
+  const today=users.filter(u=>u.active!==false&&(!u.days||!u.days.length||u.days.includes(wd)));
+  const others=users.filter(u=>u.active!==false&&!today.includes(u));
+  const recs=(await idbAll('records')).filter(r=>r.date===curDate);
+  const byId={}; recs.forEach(r=>byId[r.userId]=r);
+  const rowOf=u=>{
+    const r=byId[u.id];
+    let st='<span class="st">未記録</span>';
+    if(r&&r.saved){
+      if(r.attend==='欠席'||r.attend==='中止') st='<span class="st abs">'+r.attend+'</span>';
+      else{ const k=kubunOf(r.inTime,r.outTime); st='<span class="st done">'+(k?minLabel(k.min):'記録あり')+'</span>'; }
+    }
+    const sub=[];
+    if(u.kaigo) sub.push(u.kaigo);
+    if(r&&r.saved&&r.attend==='来所'){
+      const g=(u.water?Number(u.water):Number(settings.water||1000));
+      sub.push('水分'+(r.water||0)+'ml'+((r.water||0)<g?' ⚠':''));
+      if(r.bath&&r.bath!=='なし') sub.push(r.bath);
+    }
+    return '<button class="urow" data-uid="'+u.id+'"><span class="nm"><b>'+esc(u.name||'（名前なし）')+
+      '</b><span>'+esc(sub.join('　'))+'</span></span>'+st+'</button>';
+  };
+  let h=today.map(rowOf).join('');
+  if(!today.length) h='<p class="empty">この曜日のご利用予定はありません。</p>';
+  if(others.length) h+='<p class="note" style="margin:14px 0 4px;">ほかの利用者（この曜日は予定なし）</p>'+others.map(rowOf).join('');
+  $('#todayList').innerHTML=h;
+  $('#todayList').querySelectorAll('.urow').forEach(b=>b.addEventListener('click',()=>openRec(b.dataset.uid)));
+}
+$('#curDate').addEventListener('change',async e=>{curDate=e.target.value||todayStr();await renderToday();await renderSummary();});
+$('#dPrev').addEventListener('click',async ()=>{curDate=shiftDate(curDate,-1);await renderToday();await renderSummary();});
+$('#dNext').addEventListener('click',async ()=>{curDate=shiftDate(curDate,1);await renderToday();await renderSummary();});
+$('#dToday').addEventListener('click',async ()=>{curDate=todayStr();await renderToday();await renderSummary();});
+
+/* ===== 利用者 ===== */
+function renderUsers(){
+  if(!users.length){ $('#userList').innerHTML='<p class="empty">まだ登録がありません。</p>'; return; }
+  $('#userList').innerHTML=users.map(u=>'<button class="urow" data-uid="'+u.id+'"><span class="nm"><b>'+
+    esc(u.name||'（名前なし）')+'</b><span>'+esc(u.kaigo||'')+
+    ((u.days&&u.days.length)?'　'+u.days.map(d=>WD[d]).join('・'):'')+
+    (u.defIn?'　'+u.defIn+'〜'+(u.defOut||''):'')+'</span></span><span class="st">なおす</span></button>').join('');
+  $('#userList').querySelectorAll('.urow').forEach(b=>b.addEventListener('click',()=>openUser(b.dataset.uid)));
+}
+function openUser(uid){
+  editingUser=uid?users.find(u=>u.id===uid):null;
+  const u=editingUser||{};
+  $('#userTitle').textContent=editingUser?'利用者をなおす':'利用者を追加';
+  $('#uName').value=u.name||''; $('#uKana').value=u.kana||''; $('#uKaigo').value=u.kaigo||'';
+  $('#uIn').value=u.defIn||settings.defIn||''; $('#uOut').value=u.defOut||settings.defOut||'';
+  $$('#uDays label').forEach(l=>{
+    const on=(u.days||[]).includes(Number(l.dataset.d));
+    l.classList.toggle('on',on); l.querySelector('input').checked=on;
+  });
+  $('#uWater').value=u.water||''; $('#uMemo').value=u.memo||'';
+  $('#btnUserDel').style.display=editingUser?'':'none';
+  $('#dlgUser').showModal();
+}
+$$('#uDays label').forEach(l=>l.addEventListener('click',e=>{
+  e.preventDefault();
+  const i=l.querySelector('input'); i.checked=!i.checked; l.classList.toggle('on',i.checked);
+}));
+$('#btnUserAdd').addEventListener('click',()=>openUser(null));
+$('#userClose').addEventListener('click',()=>$('#dlgUser').close());
+$('#btnUserSave').addEventListener('click',async ()=>{
+  const name=$('#uName').value.trim();
+  if(!name){ toast('お名前を入力してください'); return; }
+  const days=$$('#uDays label').filter(l=>l.querySelector('input').checked).map(l=>Number(l.dataset.d));
+  const data={name:name,kana:$('#uKana').value.trim(),kaigo:$('#uKaigo').value,
+    defIn:$('#uIn').value,defOut:$('#uOut').value,days:days,
+    water:$('#uWater').value,memo:$('#uMemo').value.trim(),active:true};
+  if(editingUser){ Object.assign(editingUser,data); await idbPut('users',editingUser); }
+  else { const u=Object.assign({id:'u'+(++seq)},data); users.push(u); await idbPut('users',u); }
+  $('#dlgUser').close(); renderUsers(); await renderToday();
+  toast('保存しました');
+});
+$('#btnUserDel').addEventListener('click',async ()=>{
+  if(!editingUser) return;
+  if(!confirm(editingUser.name+' 様を削除します。\n過去の記録は残ります。よろしいですか？')) return;
+  users=users.filter(u=>u.id!==editingUser.id);
+  await idbDel('users',editingUser.id);
+  $('#dlgUser').close(); renderUsers(); await renderToday();
+  toast('削除しました');
+});
+
+/* ===== 出力 ===== */
+function copyText(t){
+  if(navigator.clipboard&&window.isSecureContext) return navigator.clipboard.writeText(t);
+  return new Promise(res=>{
+    const ta=document.createElement('textarea');
+    ta.value=t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    try{document.execCommand('copy');}catch(e){}
+    document.body.removeChild(ta); res();
+  });
+}
+async function renderSummary(){
+  const recs=(await idbAll('records')).filter(r=>r.date===curDate&&r.saved);
+  if(!recs.length){ $('#sumText').textContent='この日の記録はまだありません。'; $('#waterList').innerHTML='<p class="empty">—</p>'; return; }
+  let come=0,abs=0;
+  recs.forEach(r=>{ if(r.attend==='来所')come++; else abs++; });
+  const L=['■ '+(settings.facility||'')+'　'+jpDate(curDate),'',
+    'ご利用 '+come+'名／欠席・中止 '+abs+'名',''];
+  recs.forEach(r=>{ const u=users.find(x=>x.id===r.userId); L.push(recText(u||{name:'（不明）'},r)); L.push(''); });
+  $('#sumText').textContent=L.join('\n').trim();
+
+  const low=recs.filter(r=>{
+    if(r.attend!=='来所') return false;
+    const u=users.find(x=>x.id===r.userId)||{};
+    const g=u.water?Number(u.water):Number(settings.water||1000);
+    return Number(r.water||0)<g;
+  });
+  if(!low.length){ $('#waterList').innerHTML='<p class="okbox">この日は、全員が目標に届いています。</p>'; return; }
+  $('#waterList').innerHTML='<div class="scrollx"><table class="tbl"><tr><th>お名前</th><th>水分</th><th>目標</th></tr>'+
+    low.map(r=>{
+      const u=users.find(x=>x.id===r.userId)||{};
+      const g=u.water?Number(u.water):Number(settings.water||1000);
+      return '<tr><td>'+esc(u.name||'—')+'</td><td class="wlow">'+(r.water||0)+' ml</td><td>'+g+' ml</td></tr>';
+    }).join('')+'</table></div>';
+}
+$('#btnSumCopy').addEventListener('click',()=>copyText($('#sumText').textContent).then(()=>toast('コピーしました')));
+$('#btnSumShare').addEventListener('click',()=>{
+  const t=$('#sumText').textContent;
+  if(navigator.share) navigator.share({text:t}).catch(()=>{});
+  else copyText(t).then(()=>toast('コピーしました。貼り付けてお使いください'));
+});
+
+$('#btnCsv').addEventListener('click',async ()=>{
+  const ym=$('#outMonth').value;
+  if(!ym){ toast('月を選んでください'); return; }
+  const recs=(await idbAll('records')).filter(r=>r.saved&&r.date.slice(0,7)===ym).sort((a,b)=>a.date.localeCompare(b.date));
+  if(!recs.length){ toast('この月の記録はありません'); return; }
+  const head=['日付','お名前','ふりがな','要介護度','利用','来所','帰宅','滞在分','時間区分',
+    '体温','上の血圧','下の血圧','脈拍','SpO2','体重','主食','副食','水分ml','尿','便','排泄メモ',
+    '入浴','活動','ようす','服薬','気づいたこと','担当','ご家族への連絡'];
+  const rows=recs.map(r=>{
+    const u=users.find(x=>x.id===r.userId)||{};
+    const k=kubunOf(r.inTime,r.outTime);
+    return [r.date,u.name||'',u.kana||'',u.kaigo||'',r.attend||'',r.inTime||'',r.outTime||'',
+      k?k.min:'',k?k.label:'',r.temp||'',r.bpH||'',r.bpL||'',r.pulse||'',r.spo2||'',r.weight||'',
+      r.mealMain||'',r.mealSide||'',r.water||0,r.urine||0,r.stool||0,r.toiletNote||'',
+      r.bath||'',(r.progs||[]).join(' / '),r.cond||'',r.med?'済':'',r.memo||'',r.staff||'',r.renraku||''];
+  });
+  const csv='\uFEFF'+[head].concat(rows).map(r=>r.map(c=>'"'+String(c).replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const blob=new Blob([csv],{type:'text/csv'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='デイ記録-'+ym+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  toast('CSVを保存しました');
+});
+
+$('#btnPrint').addEventListener('click',async ()=>{
+  const ym=$('#outMonth').value;
+  if(!ym){ toast('月を選んでください'); return; }
+  const recs=(await idbAll('records')).filter(r=>r.saved&&r.date.slice(0,7)===ym);
+  if(!recs.length){ toast('この月の記録はありません'); return; }
+  let h='<h2 style="font-size:16px;margin:0 0 10px;">'+esc(settings.facility||'')+'　通所介護 提供記録　'+ym.replace('-','年')+'月</h2>';
+  users.forEach(u=>{
+    const rs=recs.filter(r=>r.userId===u.id).sort((a,b)=>a.date.localeCompare(b.date));
+    if(!rs.length) return;
+    h+='<div class="card"><b style="font-size:15px;">'+esc(u.name)+' 様</b>'+
+      '<span style="font-size:12px;color:#666;margin-left:8px;">'+esc(u.kaigo||'')+'</span>'+
+      '<table class="tbl" style="margin-top:8px;"><tr><th>日</th><th>利用</th><th>時間</th><th>区分</th><th>体温</th><th>血圧</th><th>食事</th><th>水分</th><th>入浴</th><th>活動・特記</th><th>担当</th></tr>'+
+      rs.map(r=>{
+        const k=kubunOf(r.inTime,r.outTime);
+        const note=[(r.progs||[]).join('・'),r.cond,r.memo,r.absNote].filter(Boolean).join(' ／ ');
+        return '<tr><td>'+Number(r.date.slice(8))+'</td><td>'+esc(r.attend||'')+'</td>'+
+          '<td>'+esc(r.inTime||'')+'〜'+esc(r.outTime||'')+'</td><td>'+esc(k?k.label:'')+'</td>'+
+          '<td>'+esc(r.temp||'')+'</td><td>'+esc(r.bpH||'')+'/'+esc(r.bpL||'')+'</td>'+
+          '<td>'+esc(r.mealMain||'')+'/'+esc(r.mealSide||'')+'</td><td>'+(r.water||0)+'</td>'+
+          '<td>'+esc(r.bath||'')+'</td><td>'+esc(note)+'</td><td>'+esc(r.staff||'')+'</td></tr>';
+      }).join('')+'</table></div>';
+  });
+  const w=window.open('','_blank');
+  if(!w){ toast('印刷用の画面を開けませんでした'); return; }
+  w.document.write('<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>通所介護 提供記録</title>'+
+    '<style>body{font-family:-apple-system,"Hiragino Sans",sans-serif;padding:14px;color:#1B2A4A;}'+
+    'table.tbl{width:100%;border-collapse:collapse;font-size:10.5px;}'+
+    'table.tbl th,table.tbl td{border:1px solid #999;padding:4px 5px;text-align:left;}'+
+    'table.tbl th{background:#eee;}.card{border:1px solid #999;border-radius:8px;padding:10px;margin-bottom:14px;break-inside:avoid;}</style>'+
+    '</head><body>'+h+'</body></html>');
+  w.document.close();
+  setTimeout(()=>w.print(),400);
+});
+
+/* ===== バックアップ ===== */
+$('#btnBackup').addEventListener('click',async ()=>{
+  const data={app:'day-kiroku',ver:1,users:users,records:await idbAll('records'),settings:settings};
+  const blob=new Blob([JSON.stringify(data,null,1)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='デイきろく帖-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  toast('保存しました');
+});
+$('#btnRestore').addEventListener('click',()=>{ $('#fileRestore').value=''; $('#fileRestore').click(); });
+$('#fileRestore').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=async ()=>{
+    try{
+      const d=JSON.parse(rd.result);
+      if(d.app!=='day-kiroku'||!Array.isArray(d.users)){ toast('デイきろく帖のファイルではありません'); return; }
+      if(!confirm('いまのデータをすべて置き換えます。よろしいですか？')) return;
+      await applyData(d); toast('復元しました');
+    }catch(err){ toast('読み込めませんでした'); }
+  };
+  rd.readAsText(f,'utf-8');
+});
+async function applyData(d){
+  await idbClear('users'); await idbClear('records');
+  for(const u of d.users) await idbPut('users',u);
+  for(const r of (d.records||[])) await idbPut('records',r);
+  settings=Object.assign({facility:'',defIn:'09:30',defOut:'16:00',water:1000,
+    programs:DEF_PROG.slice(),limits:Object.assign({},DEF_LIMIT)},d.settings||{});
+  settings.limits=Object.assign({},DEF_LIMIT,settings.limits||{});
+  if(!Array.isArray(settings.programs)||!settings.programs.length) settings.programs=DEF_PROG.slice();
+  await idbPut('meta',{k:'settings',v:settings});
+  users=d.users.slice();
+  fillSettings(); buildPrograms(); renderUsers();
+  await renderToday(); await renderSummary(); await stat();
+}
+async function stat(){
+  const all=await idbAll('records');
+  $('#dataStat').textContent='いまの保存数：利用者 '+users.length+'名／記録 '+all.filter(r=>r.saved).length+'件';
+}
+
+/* ===== 設定 ===== */
+function fillSettings(){
+  $('#setFac').value=settings.facility||'';
+  $('#setIn').value=settings.defIn||''; $('#setOut').value=settings.defOut||'';
+  $('#setWater').value=settings.water||1000;
+  $('#setPrograms').value=(settings.programs||[]).join('\n');
+  const L=settings.limits;
+  $('#lTempMax').value=L.tempMax; $('#lSpo2Min').value=L.spo2Min;
+  $('#lBpHMax').value=L.bpHMax; $('#lBpHMin').value=L.bpHMin;
+}
+$('#btnSaveFac').addEventListener('click',async ()=>{
+  settings.facility=$('#setFac').value.trim();
+  settings.defIn=$('#setIn').value; settings.defOut=$('#setOut').value;
+  settings.water=Number($('#setWater').value)||1000;
+  await idbPut('meta',{k:'settings',v:settings});
+  await renderToday(); await renderSummary();
+  toast('保存しました');
+});
+$('#btnSaveProg').addEventListener('click',async ()=>{
+  const arr=$('#setPrograms').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  settings.programs=arr.length?arr:DEF_PROG.slice();
+  await idbPut('meta',{k:'settings',v:settings});
+  buildPrograms(); toast('保存しました');
+});
+$('#btnSaveLimit').addEventListener('click',async ()=>{
+  const n=(s,d)=>{const v=Number($(s).value);return isNaN(v)||$(s).value===''?d:v;};
+  settings.limits={tempMax:n('#lTempMax',DEF_LIMIT.tempMax),spo2Min:n('#lSpo2Min',DEF_LIMIT.spo2Min),
+    bpHMax:n('#lBpHMax',DEF_LIMIT.bpHMax),bpHMin:n('#lBpHMin',DEF_LIMIT.bpHMin)};
+  await idbPut('meta',{k:'settings',v:settings});
+  toast('保存しました');
+});
+$('#btnClear').addEventListener('click',async ()=>{
+  if(!confirm('この端末のすべての利用者と記録を消します。\n元にもどせません。よろしいですか？')) return;
+  if(!confirm('本当によろしいですか？\n先にバックアップをお取りください。')) return;
+  await idbClear('users'); await idbClear('records');
+  users=[]; renderUsers(); await renderToday(); await renderSummary(); await stat();
+  toast('消しました');
+});
+
+/* ===== サンプル ===== */
+function sampleData(){
+  const d0=todayStr(), d1=shiftDate(d0,-1);
+  const U=[
+    {id:'s1',name:'松本 静江',kana:'まつもと しずえ',kaigo:'要介護3',defIn:'09:30',defOut:'16:00',days:[1,3,5],water:'1000',memo:'とろみ剤を使用。むせ込みに注意。',active:true},
+    {id:'s2',name:'川上 定男',kana:'かわかみ さだお',kaigo:'要介護1',defIn:'09:40',defOut:'16:00',days:[1,3,5],water:'',memo:'ふらつきあり。移動時は見守り。',active:true},
+    {id:'s3',name:'中村 ハル',kana:'なかむら はる',kaigo:'要支援2',defIn:'09:30',defOut:'12:30',days:[2,4],water:'',memo:'',active:true},
+    {id:'s4',name:'田島 正一',kana:'たじま しょういち',kaigo:'要介護2',defIn:'09:30',defOut:'16:00',days:[1,2,3,4,5],water:'1200',memo:'心疾患あり。入浴は10分以内。',active:true},
+    {id:'s5',name:'沢田 きよ',kana:'さわだ きよ',kaigo:'要介護4',defIn:'09:45',defOut:'15:30',days:[2,4],water:'',memo:'言葉での訴えが少ない。表情の変化に注意。',active:true},
+    {id:'s6',name:'岡田 茂',kana:'おかだ しげる',kaigo:'要介護1',defIn:'09:30',defOut:'16:00',days:[1,3,5],water:'',memo:'',active:true}
+  ];
+  const R=[
+    {key:d1+'_s1',date:d1,userId:'s1',attend:'来所',absNote:'',inTime:'09:30',outTime:'16:00',
+     temp:'36.4',spo2:'97',bpH:'138',bpL:'82',pulse:'74',weight:'44.2',
+     mealMain:'8',mealSide:'10',water:900,urine:4,stool:1,toiletNote:'',
+     bath:'機械浴',progs:['体操（全身）','口腔体操','塗り絵・書道'],cond:'お変わりなし',med:true,
+     memo:'塗り絵に集中され、40分ほど取り組まれる。',staff:'山田',
+     renraku:'本日もお元気に過ごされました。お昼はしっかり召し上がっています。',saved:true},
+    {key:d1+'_s2',date:d1,userId:'s2',attend:'来所',absNote:'',inTime:'09:40',outTime:'16:00',
+     temp:'37.6',spo2:'96',bpH:'152',bpL:'88',pulse:'86',weight:'',
+     mealMain:'5',mealSide:'3',water:600,urine:3,stool:0,toiletNote:'',
+     bath:'なし',progs:['体操（全身）'],cond:'疲れが見られた',med:true,
+     memo:'午後に37.6℃。看護師に報告し、入浴は見合わせて休息していただく。',staff:'鈴木',
+     renraku:'午後に少し熱が出ましたので、入浴は見合わせました。ご帰宅後もご様子を見てあげてください。',saved:true},
+    {key:d1+'_s6',date:d1,userId:'s6',attend:'欠席',absNote:'ご家族より、通院のためお休みとご連絡。',
+     inTime:'',outTime:'',temp:'',spo2:'',bpH:'',bpL:'',pulse:'',weight:'',
+     mealMain:'',mealSide:'',water:0,urine:0,stool:0,toiletNote:'',bath:'',progs:[],cond:'',med:false,
+     memo:'',staff:'鈴木',renraku:'',saved:true}
+  ];
+  return {app:'day-kiroku',ver:1,users:U,records:R,
+    settings:{facility:'デイサービス みどりの里',defIn:'09:30',defOut:'16:00',water:1000,
+      programs:DEF_PROG.slice(),limits:Object.assign({},DEF_LIMIT)}};
+}
+$('#btnSample').addEventListener('click',async ()=>{
+  if(users.length&&!confirm('いまのデータをすべて置き換えて、サンプルを入れます。\nよろしいですか？')) return;
+  await applyData(sampleData());
+  toast('サンプルを入れました');
+});
+
+/* ===== タブ ===== */
+$$('nav.tabs button').forEach(b=>b.addEventListener('click',async ()=>{
+  $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  $$('.page').forEach(p=>p.classList.remove('on'));
+  $('#p-'+b.dataset.tab).classList.add('on');
+  if(b.dataset.tab==='out'){ await renderSummary(); await stat(); }
+  if(b.dataset.tab==='users') renderUsers();
+  window.scrollTo(0,0);
+}));
+
+/* ===== 起動 ===== */
+buildMealScale('#scMain','mealMain');
+buildMealScale('#scSide','mealSide');
+(async function init(){
+  try{ await openDB(); }
+  catch(e){ alert('この端末では記録を保存できません。ブラウザの設定をご確認ください。'); return; }
+  users=await idbAll('users');
+  const st=await idbGet('meta','settings');
+  if(st&&st.v){
+    settings=Object.assign(settings,st.v);
+    settings.limits=Object.assign({},DEF_LIMIT,settings.limits||{});
+    if(!Array.isArray(settings.programs)||!settings.programs.length) settings.programs=DEF_PROG.slice();
+  }
+  fillSettings(); buildPrograms(); renderUsers();
+  $('#curDate').value=curDate;
+  $('#outMonth').value=curDate.slice(0,7);
+  await renderToday(); await renderSummary(); await stat();
+})();
+
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); });
+}
+</script>
+</body>
+</html>
