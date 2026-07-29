@@ -1086,6 +1086,46 @@ async function keyOf(pass,salt){
   return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:200000,hash:'SHA-256'},
     base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
 }
+
+/* ===== QR用の詰め方（Base45／RFC 9285） =====
+   QRコードには「英数字モード」があり、大文字と数字と一部の記号だけなら
+   1文字あたり5.5ビットで詰められる（ふつうのバイトモードは8ビット）。
+   Base64は小文字を含むためバイトモードになり、33%ふくらむ。
+   Base45なら英数字モードに乗るので、ふくらみは3%程度で済む。 */
+const B45C='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ $%*+-./:';
+function b45(bytes){
+  const b=new Uint8Array(bytes); let s='';
+  for(let i=0;i<b.length;i+=2){
+    if(i+1<b.length){
+      let n=b[i]*256+b[i+1];
+      s+=B45C[n%45]; n=(n/45)|0; s+=B45C[n%45]; n=(n/45)|0; s+=B45C[n];
+    }else{
+      let n=b[i];
+      s+=B45C[n%45]; n=(n/45)|0; s+=B45C[n];
+    }
+  }
+  return s;
+}
+/* 包んだもの（Base64）を、QR向けのBase45に置きかえる */
+const toQR=(s)=>b45(unb64(s));
+const fromQR=(s)=>b64(unb45(s));
+function unb45(str){
+  const v=[];
+  for(const ch of String(str)){ const k=B45C.indexOf(ch); if(k<0) throw new Error('b45'); v.push(k); }
+  const out=[];
+  let i=0;
+  for(; i+2<v.length; i+=3){
+    const n=v[i]+v[i+1]*45+v[i+2]*2025;
+    if(n>65535) throw new Error('b45');
+    out.push(n>>8, n&255);
+  }
+  if(v.length-i===2){
+    const n=v[i]+v[i+1]*45;
+    if(n>255) throw new Error('b45');
+    out.push(n);
+  }else if(v.length-i!==0) throw new Error('b45');
+  return new Uint8Array(out);
+}
 async function deflateRaw(str){
   if(typeof CompressionStream==='undefined') return null;
   try{
@@ -1120,7 +1160,7 @@ async function unwrap2(body,pass){
 
 /* ===== QRコードで渡す ===== */
 const QR_MARK='DQR1:';
-const QR_CHUNK=150;
+const QR_CHUNK=240;
 let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=1400, qrPaused=false;
 function gotoSettings(msg){
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
@@ -1138,7 +1178,8 @@ async function renderQrCount(){
 }
 function drawQR(text){
   const cv=$('#qrCanvas'), ctx=cv.getContext('2d');
-  const qr=qrcode(0,'M'); qr.addData(text); qr.make();
+  const qr=qrcode(0,'M'); /* 大文字・数字・一部記号だけなら英数字モードで詰める（マス目が2割ほど減る） */
+  qr.addData(text, /^[0-9A-Z $%*+\-.\/:]*$/.test(text) ? 'Alphanumeric' : 'Byte'); qr.make();
   const n=qr.getModuleCount(), pad=4;
   const cell=Math.floor(cv.width/(n+pad*2));
   const off=Math.floor((cv.width-cell*n)/2);
@@ -1178,9 +1219,10 @@ async function qrSend(kind){
   let body;
   try{ body=await wrap2(JSON.stringify(payload),key); }
   catch(e){ toast('うまく包めませんでした'); return; }
+  body=toQR(body);
   const total=Math.ceil(body.length/QR_CHUNK);
   if(total>30 && !confirm('QRコードが '+total+'枚 になります。\n読み取りに時間がかかります。\n\n日ごとに分けてお渡しになることをおすすめします。\nこのまま進めますか？')) return;
-  const sid=Math.random().toString(36).slice(2,6);
+  const sid=Math.random().toString(36).slice(2,6).toUpperCase();
   qrParts=[];
   for(let i=0;i<total;i++) qrParts.push(QR_MARK+sid+':'+(i+1)+':'+total+':'+body.slice(i*QR_CHUNK,(i+1)*QR_CHUNK));
   qrIdx=0; qrPaused=false;
@@ -1262,7 +1304,9 @@ async function scanHandle(text){
     return;
   }
   const p=text.split(':');
-  if(p.length<6) return;
+  /* 見出しは 印+通し番号+何枚目+全体枚数+本文 の5つに分かれる。
+     本文はBase64でコロンを含まないため、6つを求めると必ず取りこぼす。 */
+  if(p.length<5) return;
   const sid=p[1], i=Number(p[2]), n=Number(p[3]);
   const payload=text.slice((QR_MARK+sid+':'+p[2]+':'+p[3]+':').length);
   if(!sid||!i||!n) return;
@@ -1273,7 +1317,7 @@ async function scanHandle(text){
   scanStop();
   let body=''; for(let k=1;k<=n;k++) body+=scanGot[k];
   let obj;
-  try{ obj=JSON.parse(await unwrap2(body,settings.shareKey||'')); }
+  try{ obj=JSON.parse(await unwrap2(fromQR(body),settings.shareKey||'')); }
   catch(e){
     $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;"><b>合言葉が合わないようです。</b><br>両方の端末で、同じ合言葉になっているかお確かめください。</div>';
     return;
