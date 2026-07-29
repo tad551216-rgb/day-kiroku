@@ -178,7 +178,7 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 input.masked{-webkit-text-security:disc;}
 input.masked.show{-webkit-text-security:none;}
 .qrwrap{text-align:center;}
-.qrwrap canvas{width:min(78vw,360px);height:auto;background:#fff;border:10px solid #fff;
+.qrwrap canvas{width:min(88vw,480px);height:auto;background:#fff;border:10px solid #fff;
   border-radius:8px;box-shadow:0 2px 8px rgba(27,42,74,.18);}
 .qrstep{font-size:19px;font-weight:700;margin:12px 0 4px;}
 .qrbar{display:flex;gap:4px;justify-content:center;margin:8px 0 4px;flex-wrap:wrap;}
@@ -1304,15 +1304,16 @@ function scanLoop(){
     let data=null;
     if(m===0){ const s2=side*0.6, o=(side-s2)/2; data=tryDecode(v, cx+o, cy+o, s2, 700); }
     else if(m===1){ data=tryDecode(v, cx, cy, side, 700); }
-    else { const w=Math.min(vw,1000), h=Math.round(vh/vw*w);
-           try{
-             scanCv.width=w; scanCv.height=h;
-             const ctx=scanCv.getContext('2d',{willReadFrequently:true});
-             ctx.drawImage(v,0,0,w,h);
-             const img=ctx.getImageData(0,0,w,h);
-             const code=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
-             data=(code&&code.data)?code.data:null;
-           }catch(e){ scanErr=String(e&&e.message||e).slice(0,40); }
+    else {
+      /* 少し引いた構え。映り込みに備えて白黒反転も試す */
+      try{
+        scanCv.width=720; scanCv.height=720;
+        const ctx=scanCv.getContext('2d',{willReadFrequently:true});
+        ctx.drawImage(v, cx, cy, side, side, 0, 0, 720, 720);
+        const img=ctx.getImageData(0,0,720,720);
+        const code=jsQR(img.data,720,720,{inversionAttempts:'attemptBoth'});
+        data=(code&&code.data)?code.data:null;
+      }catch(e){ scanErr=String(e&&e.message||e).slice(0,40); }
     }
     scanTries++;
     if(scanTries%10===0) scanDiag(v);
