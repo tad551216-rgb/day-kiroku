@@ -1,4 +1,4 @@
-const CACHE = 'day-kiroku-v18';
+const CACHE = 'day-kiroku-v19';
 const ASSETS = ['./','./index.html','./manifest.json','./qrcode.js','./jsQR.js','./icon-192.png','./icon-512.png','./icon-180.png'];
 
 /* 入れておく。1つ失敗しても、ほかは入れる */

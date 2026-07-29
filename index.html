@@ -1160,7 +1160,7 @@ async function unwrap2(body,pass){
 
 /* ===== QRコードで渡す ===== */
 const QR_MARK='DQR1:';
-const QR_CHUNK=240;
+const QR_CHUNK=480;
 let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=1400, qrPaused=false;
 function gotoSettings(msg){
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
