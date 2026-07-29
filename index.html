@@ -78,9 +78,10 @@ h2.sec:first-child{margin-top:4px;}
 .urow .st.abs{background:var(--warn);color:var(--verm2);border-color:#E9CFC4;}
 .empty{text-align:center;color:var(--muted);font-size:13.5px;padding:26px 10px;line-height:1.9;}
 
-dialog{border:none;padding:0;background:none;max-width:100%;}
+dialog{border:none;padding:0;background:none;max-width:100%;
+  margin:calc(env(safe-area-inset-top) + 10px) auto auto auto;}
 dialog::backdrop{background:rgba(27,42,74,.6);}
-.sheet{background:var(--paper);width:min(680px,94vw);max-height:80vh;overflow:auto;border-radius:16px;padding:0 0 16px;}
+.sheet{background:var(--paper);width:min(680px,94vw);max-height:78vh;max-height:calc(100dvh - env(safe-area-inset-top) - 56px);overflow:auto;border-radius:16px;padding:0 0 16px;}
 .sheet-head{position:sticky;top:0;background:var(--ink);color:#fff;padding:13px 16px;
   display:flex;align-items:center;gap:10px;border-radius:16px 16px 0 0;z-index:2;}
 .sheet-head b{flex:1;font-size:17px;}
@@ -177,13 +178,16 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 input.masked{-webkit-text-security:disc;}
 input.masked.show{-webkit-text-security:none;}
 .qrwrap{text-align:center;}
-.qrwrap canvas{width:min(86vw,420px);height:auto;background:#fff;border:10px solid #fff;
+.qrwrap canvas{width:min(78vw,360px);height:auto;background:#fff;border:10px solid #fff;
   border-radius:8px;box-shadow:0 2px 8px rgba(27,42,74,.18);}
 .qrstep{font-size:19px;font-weight:700;margin:12px 0 4px;}
 .qrbar{display:flex;gap:4px;justify-content:center;margin:8px 0 4px;flex-wrap:wrap;}
 .qrbar i{width:22px;height:8px;border-radius:4px;background:var(--line2);font-style:normal;}
 .qrbar i.on{background:var(--green);}
 .qrhint{font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;}
+.qrctl{display:flex;gap:6px;margin-top:12px;}
+.qrctl button{flex:1;border:1.5px solid var(--line2);background:var(--white);
+  border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;color:var(--ink2);}
 .scanwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;}
 .scanwrap video{width:100%;display:block;max-height:42vh;object-fit:cover;}
 .scanwrap .frame{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;}
@@ -535,10 +539,11 @@ input.masked.show{-webkit-text-security:none;}
       <p class="qrstep" id="qrStep">—</p>
       <div class="qrbar" id="qrBar"></div>
       <p class="qrhint" id="qrHint"></p>
-      <div class="row" style="margin-top:12px;">
-        <button class="btn" id="qrSlower">おそく</button>
-        <button class="btn" id="qrPause">とめる</button>
-        <button class="btn" id="qrFaster">はやく</button>
+      <div class="qrctl">
+        <button id="qrSlower">おそく</button>
+        <button id="qrPause">とめる</button>
+        <button id="qrFaster">はやく</button>
+        <button id="qrNext">▶次へ</button>
       </div>
       <button class="btn wide" id="qrSendClose2" style="margin-top:10px;">閉じる</button>
     </div>
@@ -555,10 +560,19 @@ input.masked.show{-webkit-text-security:none;}
       <div class="qrbar" id="scanBar"></div>
       <p class="qrhint" id="scanHint" style="text-align:center;">読み取れた分から順にたまっていきます。全部そろうと、自動で取り込みます。</p>
       <div id="scanOut"></div>
+      <p class="qrhint" id="scanDiag" style="text-align:center;margin-top:8px;font-size:11px;opacity:.75;">—</p>
       <p class="qrhint" style="text-align:center;margin-top:10px;">
         うまく読み取れないときは、明るいところで、相手の画面から<b>20〜30cmほど離して</b>お試しください。
         画面の明るさを上げると読みやすくなります。
       </p>
+      <p class="qrhint" style="text-align:center;margin-top:14px;">
+        それでも読み取れないときは、写真に撮ってからお試しください。<br>
+        （送る側で「とめる」を押し、1枚ずつ撮ってください）
+      </p>
+      <button class="btn wide" id="btnScanPhoto" style="margin-top:6px;">📷 写真を撮って読み取る</button>
+      <button class="btn wide" id="btnSelfTest" style="margin-top:6px;">🔧 読み取り機能の自己診断</button>
+      <input type="file" id="filePhoto" accept="image/*" capture="environment" style="display:none;">
+      <div id="photoOut"></div>
       <button class="btn wide" id="qrScanClose2" style="margin-top:12px;">閉じる</button>
     </div>
   </div>
@@ -1179,6 +1193,10 @@ async function qrSend(kind){
 $('#btnQrUsers').addEventListener('click',()=>qrSend('users'));
 $('#btnQrDay').addEventListener('click',()=>qrSend('day'));
 $('#btnQrMonth').addEventListener('click',()=>qrSend('month'));
+$('#qrNext').addEventListener('click',()=>{
+  qrPaused=true; $('#qrPause').textContent='すすめる';
+  qrIdx=(qrIdx+1)%qrParts.length; qrShow();
+});
 function closeSend(){ qrStop(); $('#dlgQrSend').close(); }
 $('#qrSendClose').addEventListener('click',closeSend);
 $('#qrSendClose2').addEventListener('click',closeSend);
@@ -1188,7 +1206,8 @@ $('#qrSlower').addEventListener('click',()=>{ qrSpeed=Math.min(2000,qrSpeed+200)
 
 /* ===== QRコードを読み取る ===== */
 let scanStream=null, scanRAF=null, scanGot={}, scanSid='', scanTotal=0, scanCv=null;
-function scanReset(){ scanGot={}; scanSid=''; scanTotal=0; $('#scanOut').innerHTML=''; scanPaint(); }
+function scanReset(){ scanGot={}; scanSid=''; scanTotal=0; scanTries=0; scanErr='';
+  $('#scanOut').innerHTML=''; const d=$('#scanDiag'); if(d) d.textContent='—'; scanPaint(); }
 function scanPaint(){
   if(!scanTotal){ $('#scanBar').innerHTML=''; $('#scanStep').textContent='カメラを向けてください'; return; }
   const got=Object.keys(scanGot).length;
@@ -1252,23 +1271,52 @@ async function scanHandle(text){
   }
   if(await mergeIn(obj,'#scanOut')){ toast('取り込みました'); $('#qrOut').innerHTML=$('#scanOut').innerHTML; }
 }
-let scanTick=0;
+let scanTick=0, scanTries=0, scanErr='';
+/* 画像の一部を切り出して、大きめに描き直してから読み取る */
+function tryDecode(v, sx, sy, side, N){
+  try{
+    scanCv.width=N; scanCv.height=N;
+    const ctx=scanCv.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(v, sx, sy, side, side, 0, 0, N, N);
+    const img=ctx.getImageData(0,0,N,N);
+    const code=jsQR(img.data,N,N,{inversionAttempts:'dontInvert'});
+    return (code&&code.data)?code.data:null;
+  }catch(e){ scanErr=String(e&&e.message||e).slice(0,40); return null; }
+}
+function scanDiag(v){
+  const el=$('#scanDiag'); if(!el) return;
+  el.textContent='映像 '+(v.videoWidth||0)+'×'+(v.videoHeight||0)
+    +'／状態 '+v.readyState+'／解析 '+scanTries+'回'
+    +(scanErr?('／'+scanErr):'');
+}
 function scanLoop(){
   const v=$('#scanVideo');
   scanTick++;
-  /* 解析は重いので、2コマに1回だけ行う */
-  if(v.readyState===v.HAVE_ENOUGH_DATA && scanCv && v.videoWidth && (scanTick%2===0)){
-    /* QRのマス目がつぶれないよう、大きめの解像度で解析する */
-    const w=Math.min(v.videoWidth, 800);
-    const h=Math.max(1, Math.round(v.videoHeight/v.videoWidth*w));
-    scanCv.width=w; scanCv.height=h;
-    const ctx=scanCv.getContext('2d',{willReadFrequently:true});
-    ctx.drawImage(v,0,0,w,h);
-    try{
-      const img=ctx.getImageData(0,0,w,h);
-      const code=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
-      if(code&&code.data) scanHandle(code.data);
-    }catch(e){}
+  /* 解析できていないときも状況が分かるように、定期的に表示を更新する */
+  if(scanTick%30===0) scanDiag(v);
+  /* readyState は端末によって 2 で止まることがあるため、2以上で解析する */
+  if(v.readyState>=2 && scanCv && v.videoWidth && (scanTick%2===0)){
+    const vw=v.videoWidth, vh=v.videoHeight;
+    const side=Math.min(vw,vh);
+    const cx=(vw-side)/2, cy=(vh-side)/2;
+    /* 寄り・ふつう・引き の三通りを順に試す */
+    const m=Math.floor(scanTries)%3;
+    let data=null;
+    if(m===0){ const s2=side*0.6, o=(side-s2)/2; data=tryDecode(v, cx+o, cy+o, s2, 700); }
+    else if(m===1){ data=tryDecode(v, cx, cy, side, 700); }
+    else { const w=Math.min(vw,1000), h=Math.round(vh/vw*w);
+           try{
+             scanCv.width=w; scanCv.height=h;
+             const ctx=scanCv.getContext('2d',{willReadFrequently:true});
+             ctx.drawImage(v,0,0,w,h);
+             const img=ctx.getImageData(0,0,w,h);
+             const code=jsQR(img.data,w,h,{inversionAttempts:'dontInvert'});
+             data=(code&&code.data)?code.data:null;
+           }catch(e){ scanErr=String(e&&e.message||e).slice(0,40); }
+    }
+    scanTries++;
+    if(scanTries%10===0) scanDiag(v);
+    if(data) scanHandle(data);
   }
   scanRAF=requestAnimationFrame(scanLoop);
 }
@@ -1293,7 +1341,72 @@ $('#btnQrScan').addEventListener('click',async ()=>{
   if(!scanCv) scanCv=document.createElement('canvas');
   scanLoop();
 });
-function closeScan(){ scanStop(); $('#dlgQrScan').close(); }
+/* 自己診断：QRを自分で作って、自分で読み取れるか試す。
+   ここで成功すれば、読み取りの仕組み自体は動いています。 */
+$('#btnSelfTest').addEventListener('click',()=>{
+  const out=$('#photoOut');
+  const lines=[];
+  lines.push('QR作成の部品：'+(typeof qrcode==='undefined'?'★読み込めていません':'あり'));
+  lines.push('QR読取の部品：'+(typeof jsQR==='undefined'?'★読み込めていません':'あり'));
+  const v=$('#scanVideo');
+  lines.push('カメラ映像：'+(v.videoWidth||0)+'×'+(v.videoHeight||0)+'（状態 '+v.readyState+'）');
+  try{
+    const text='HQR1:test:1:1:ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    const qr=qrcode(0,'M'); qr.addData(text); qr.make();
+    const n=qr.getModuleCount(), sc=6, quiet=4, size=(n+quiet*2)*sc;
+    const cv=document.createElement('canvas'); cv.width=size; cv.height=size;
+    const ctx=cv.getContext('2d',{willReadFrequently:true});
+    ctx.fillStyle='#fff'; ctx.fillRect(0,0,size,size);
+    ctx.fillStyle='#000';
+    for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(qr.isDark(r,c))
+      ctx.fillRect((c+quiet)*sc,(r+quiet)*sc,sc,sc);
+    const d=ctx.getImageData(0,0,size,size);
+    const code=jsQR(d.data,size,size,{inversionAttempts:'dontInvert'});
+    lines.push('自分で作ったQRを読む：'+(code&&code.data===text?'成功':'★失敗'));
+  }catch(e){
+    lines.push('自分で作ったQRを読む：★エラー '+String(e&&e.message||e).slice(0,50));
+  }
+  const okAll=lines.every(l=>l.indexOf('★')<0);
+  out.innerHTML='<div class="'+(okAll?'okbox':'warnbox')+'" style="margin-top:10px;font-size:12.5px;">'
+    +lines.map(l=>l.replace(/</g,'&lt;')).join('<br>')
+    +'<br><br>'+(okAll
+      ? '読み取りの仕組みは正しく動いています。あとは写り方の問題ですので、明るさと距離を変えてお試しください。'
+      : '★の付いた項目が原因です。この画面を撮ってお知らせください。')+'</div>';
+});
+
+/* 撮った写真からQRを読み取る（動画で読めないときの逃げ道） */
+$('#btnScanPhoto').addEventListener('click',()=>{ $('#filePhoto').value=''; $('#filePhoto').click(); });
+$('#filePhoto').addEventListener('change',e=>{
+  const f=e.target.files&&e.target.files[0]; if(!f) return;
+  $('#photoOut').innerHTML='<p class="qrhint" style="text-align:center;">読み取っています…</p>';
+  const img=new Image();
+  img.onload=()=>{
+    const long=Math.max(img.width,img.height);
+    const sc=Math.min(1, 1600/long);
+    const w=Math.round(img.width*sc), h=Math.round(img.height*sc);
+    const cv=document.createElement('canvas');
+    cv.width=w; cv.height=h;
+    const ctx=cv.getContext('2d',{willReadFrequently:true});
+    ctx.drawImage(img,0,0,w,h);
+    let code=null;
+    try{
+      const d=ctx.getImageData(0,0,w,h);
+      code=jsQR(d.data,w,h,{inversionAttempts:'attemptBoth'});
+    }catch(err){}
+    URL.revokeObjectURL(img.src);
+    if(code&&code.data){
+      $('#photoOut').innerHTML='';
+      scanHandle(code.data);
+    }else{
+      $('#photoOut').innerHTML='<div class="warnbox" style="margin-top:10px;">'+
+        'この写真からは読み取れませんでした。<br>QRコード全体がはっきり写るように、もう一度お試しください。</div>';
+    }
+  };
+  img.onerror=()=>{ $('#photoOut').innerHTML='<div class="warnbox" style="margin-top:10px;">写真を開けませんでした。</div>'; };
+  img.src=URL.createObjectURL(f);
+});
+
+function closeScan(){ scanStop(); $('#photoOut').innerHTML=''; $('#dlgQrScan').close(); }
 $('#qrScanClose').addEventListener('click',closeScan);
 $('#qrScanClose2').addEventListener('click',closeScan);
 
