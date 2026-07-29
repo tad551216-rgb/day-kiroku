@@ -80,7 +80,7 @@ h2.sec:first-child{margin-top:4px;}
 
 dialog{border:none;padding:0;background:none;max-width:100%;}
 dialog::backdrop{background:rgba(27,42,74,.6);}
-.sheet{background:var(--paper);width:min(680px,94vw);max-height:88vh;overflow:auto;border-radius:16px;padding:0 0 16px;}
+.sheet{background:var(--paper);width:min(680px,94vw);max-height:80vh;overflow:auto;border-radius:16px;padding:0 0 16px;}
 .sheet-head{position:sticky;top:0;background:var(--ink);color:#fff;padding:13px 16px;
   display:flex;align-items:center;gap:10px;border-radius:16px 16px 0 0;z-index:2;}
 .sheet-head b{flex:1;font-size:17px;}
@@ -185,7 +185,7 @@ input.masked.show{-webkit-text-security:none;}
 .qrbar i.on{background:var(--green);}
 .qrhint{font-size:13px;color:var(--muted);line-height:1.9;margin-top:8px;}
 .scanwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;}
-.scanwrap video{width:100%;display:block;max-height:60vh;object-fit:cover;}
+.scanwrap video{width:100%;display:block;max-height:42vh;object-fit:cover;}
 .scanwrap .frame{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;}
 #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
@@ -540,6 +540,7 @@ input.masked.show{-webkit-text-security:none;}
         <button class="btn" id="qrPause">とめる</button>
         <button class="btn" id="qrFaster">はやく</button>
       </div>
+      <button class="btn wide" id="qrSendClose2" style="margin-top:10px;">閉じる</button>
     </div>
   </div>
 </dialog>
@@ -554,6 +555,11 @@ input.masked.show{-webkit-text-security:none;}
       <div class="qrbar" id="scanBar"></div>
       <p class="qrhint" id="scanHint" style="text-align:center;">読み取れた分から順にたまっていきます。全部そろうと、自動で取り込みます。</p>
       <div id="scanOut"></div>
+      <p class="qrhint" style="text-align:center;margin-top:10px;">
+        うまく読み取れないときは、明るいところで、相手の画面から<b>20〜30cmほど離して</b>お試しください。
+        画面の明るさを上げると読みやすくなります。
+      </p>
+      <button class="btn wide" id="qrScanClose2" style="margin-top:12px;">閉じる</button>
     </div>
   </div>
 </dialog>
@@ -1099,7 +1105,7 @@ async function unwrap2(body,pass){
 
 /* ===== QRコードで渡す ===== */
 const QR_MARK='DQR1:';
-const QR_CHUNK=950;
+const QR_CHUNK=550;
 let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=700, qrPaused=false;
 function gotoSettings(msg){
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
@@ -1173,7 +1179,9 @@ async function qrSend(kind){
 $('#btnQrUsers').addEventListener('click',()=>qrSend('users'));
 $('#btnQrDay').addEventListener('click',()=>qrSend('day'));
 $('#btnQrMonth').addEventListener('click',()=>qrSend('month'));
-$('#qrSendClose').addEventListener('click',()=>{ qrStop(); $('#dlgQrSend').close(); });
+function closeSend(){ qrStop(); $('#dlgQrSend').close(); }
+$('#qrSendClose').addEventListener('click',closeSend);
+$('#qrSendClose2').addEventListener('click',closeSend);
 $('#qrPause').addEventListener('click',()=>{ qrPaused=!qrPaused; $('#qrPause').textContent=qrPaused?'すすめる':'とめる'; });
 $('#qrFaster').addEventListener('click',()=>{ qrSpeed=Math.max(300,qrSpeed-200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
 $('#qrSlower').addEventListener('click',()=>{ qrSpeed=Math.min(2000,qrSpeed+200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
@@ -1244,10 +1252,15 @@ async function scanHandle(text){
   }
   if(await mergeIn(obj,'#scanOut')){ toast('取り込みました'); $('#qrOut').innerHTML=$('#scanOut').innerHTML; }
 }
+let scanTick=0;
 function scanLoop(){
   const v=$('#scanVideo');
-  if(v.readyState===v.HAVE_ENOUGH_DATA&&scanCv){
-    const w=480, h=Math.round(v.videoHeight/v.videoWidth*480)||480;
+  scanTick++;
+  /* 解析は重いので、2コマに1回だけ行う */
+  if(v.readyState===v.HAVE_ENOUGH_DATA && scanCv && v.videoWidth && (scanTick%2===0)){
+    /* QRのマス目がつぶれないよう、大きめの解像度で解析する */
+    const w=Math.min(v.videoWidth, 800);
+    const h=Math.max(1, Math.round(v.videoHeight/v.videoWidth*w));
     scanCv.width=w; scanCv.height=h;
     const ctx=scanCv.getContext('2d',{willReadFrequently:true});
     ctx.drawImage(v,0,0,w,h);
@@ -1269,7 +1282,7 @@ $('#btnQrScan').addEventListener('click',async ()=>{
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast('この端末ではカメラが使えません'); return; }
   scanReset();
   $('#dlgQrScan').showModal();
-  try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}}); }
+  try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}}); }
   catch(e){
     $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;">カメラを使えませんでした。<br>ブラウザの設定でカメラの使用を許可してください。</div>';
     return;
@@ -1280,7 +1293,9 @@ $('#btnQrScan').addEventListener('click',async ()=>{
   if(!scanCv) scanCv=document.createElement('canvas');
   scanLoop();
 });
-$('#qrScanClose').addEventListener('click',()=>{ scanStop(); $('#dlgQrScan').close(); });
+function closeScan(){ scanStop(); $('#dlgQrScan').close(); }
+$('#qrScanClose').addEventListener('click',closeScan);
+$('#qrScanClose2').addEventListener('click',closeScan);
 
 /* ===== バックアップ ===== */
 $('#btnBackup').addEventListener('click',async ()=>{
