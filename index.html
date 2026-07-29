@@ -189,8 +189,8 @@ input.masked.show{-webkit-text-security:none;}
 .qrctl button{flex:1;border:1.5px solid var(--line2);background:var(--white);
   border-radius:9px;padding:11px 0;font-size:13px;font-weight:700;color:var(--ink2);}
 .scanwrap{position:relative;background:#000;border-radius:12px;overflow:hidden;}
-.scanwrap video{width:100%;display:block;max-height:42vh;object-fit:cover;}
-.scanwrap .frame{position:absolute;inset:12%;border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;}
+.scanwrap video{width:100%;display:block;height:auto;max-height:68vh;object-fit:cover;}
+.scanwrap .frame{position:absolute;inset:6%;border:3px solid rgba(255,255,255,.85);border-radius:14px;pointer-events:none;}
 #toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);
   background:var(--ink);color:#fff;padding:11px 20px;border-radius:999px;font-size:13.5px;font-weight:700;
   opacity:0;pointer-events:none;transition:.22s;z-index:100;max-width:88vw;text-align:center;}
@@ -552,7 +552,7 @@ input.masked.show{-webkit-text-security:none;}
 
 <!-- QRを読み取る -->
 <dialog id="dlgQrScan">
-  <div class="sheet" style="width:min(560px,94vw);">
+  <div class="sheet" style="width:min(1000px,98vw);">
     <div class="sheet-head"><b>QRコードを読み取る</b><button id="qrScanClose">閉じる</button></div>
     <div class="sheet-body">
       <div class="scanwrap"><video id="scanVideo" playsinline muted></video><div class="frame"></div></div>
@@ -562,7 +562,7 @@ input.masked.show{-webkit-text-security:none;}
       <div id="scanOut"></div>
       <p class="qrhint" id="scanDiag" style="text-align:center;margin-top:8px;font-size:11px;opacity:.75;">—</p>
       <p class="qrhint" style="text-align:center;margin-top:10px;">
-        うまく読み取れないときは、明るいところで、相手の画面から<b>20〜30cmほど離して</b>お試しください。
+        <b>QRコードが白い枠いっぱいになるまで近づけてください。</b>小さく写っていると読み取れません。
         画面の明るさを上げると読みやすくなります。
       </p>
       <p class="qrhint" style="text-align:center;margin-top:14px;">
@@ -570,7 +570,7 @@ input.masked.show{-webkit-text-security:none;}
         （送る側で「とめる」を押し、1枚ずつ撮ってください）
       </p>
       <button class="btn wide" id="btnScanPhoto" style="margin-top:6px;">📷 写真を撮って読み取る</button>
-      <button class="btn wide" id="btnSelfTest" style="margin-top:6px;">🔧 読み取り機能の自己診断</button>
+      <button class="btn wide" id="btnSelfTest" style="margin-top:6px;">🔧 自己診断（カメラを向けたまま押す）</button>
       <input type="file" id="filePhoto" accept="image/*" capture="environment" style="display:none;">
       <div id="photoOut"></div>
       <button class="btn wide" id="qrScanClose2" style="margin-top:12px;">閉じる</button>
@@ -1251,7 +1251,15 @@ async function mergeIn(obj,where){
   return true;
 }
 async function scanHandle(text){
-  if(!text||text.indexOf(QR_MARK)!==0) return;
+  if(!text) return;
+  if(text.indexOf(QR_MARK)!==0){
+    $('#scanStep').textContent='QRを読み取りましたが、このアプリのものではありません';
+    $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;">'+
+      '<b>QRコードは読み取れています。</b><br>ただし、このアプリで渡したものではありません。<br>'+
+      '読み取った中身のはじめ：<br><span style="font-family:ui-monospace,monospace;font-size:11px;">'+
+      esc(String(text).slice(0,40))+'</span></div>';
+    return;
+  }
   const p=text.split(':');
   if(p.length<6) return;
   const sid=p[1], i=Number(p[2]), n=Number(p[3]);
@@ -1351,6 +1359,26 @@ $('#btnSelfTest').addEventListener('click',()=>{
   lines.push('QR読取の部品：'+(typeof jsQR==='undefined'?'★読み込めていません':'あり'));
   const v=$('#scanVideo');
   lines.push('カメラ映像：'+(v.videoWidth||0)+'×'+(v.videoHeight||0)+'（状態 '+v.readyState+'）');
+  try{
+    if(!v.videoWidth){ lines.push('映像の写し取り：★映像がありません'); }
+    else{
+      const N=400;
+      const cv=document.createElement('canvas'); cv.width=N; cv.height=N;
+      const ctx=cv.getContext('2d',{willReadFrequently:true});
+      const side=Math.min(v.videoWidth,v.videoHeight);
+      ctx.drawImage(v,(v.videoWidth-side)/2,(v.videoHeight-side)/2,side,side,0,0,N,N);
+      const d=ctx.getImageData(0,0,N,N).data;
+      let mn=255,mx=0,sum=0,cnt=0;
+      for(let i=0;i<d.length;i+=4*37){
+        const g=(d[i]*299+d[i+1]*587+d[i+2]*114)/1000;
+        if(g<mn)mn=g; if(g>mx)mx=g; sum+=g; cnt++;
+      }
+      lines.push('映像の写し取り：明るさ '+Math.round(mn)+'〜'+Math.round(mx)+'（平均'+Math.round(sum/cnt)+'）');
+      if(mx-mn<20) lines.push('　→ ★映像が写し取れていません（真っ黒か真っ白）');
+      const c2=jsQR(ctx.getImageData(0,0,N,N).data,N,N,{inversionAttempts:'attemptBoth'});
+      lines.push('いま写っているQR：'+(c2&&c2.data?('読めた「'+String(c2.data).slice(0,24)+'」'):'見つからず'));
+    }
+  }catch(e){ lines.push('映像の写し取り：★エラー '+String(e&&e.message||e).slice(0,50)); }
   try{
     const text='HQR1:test:1:1:ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
     const qr=qrcode(0,'M'); qr.addData(text); qr.make();
