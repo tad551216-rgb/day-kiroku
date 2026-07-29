@@ -1308,18 +1308,19 @@ function scanLoop(){
     const side=Math.min(vw,vh);
     const cx=(vw-side)/2, cy=(vh-side)/2;
     /* 寄り・ふつう・引き の三通りを順に試す */
+    const N=Math.min(1080, Math.round(side));
     const m=Math.floor(scanTries)%3;
     let data=null;
-    if(m===0){ const s2=side*0.6, o=(side-s2)/2; data=tryDecode(v, cx+o, cy+o, s2, 700); }
-    else if(m===1){ data=tryDecode(v, cx, cy, side, 700); }
+    if(m===0){ const s2=side*0.6, o=(side-s2)/2; data=tryDecode(v, cx+o, cy+o, s2, N); }
+    else if(m===1){ data=tryDecode(v, cx, cy, side, N); }
     else {
       /* 少し引いた構え。映り込みに備えて白黒反転も試す */
       try{
-        scanCv.width=720; scanCv.height=720;
+        scanCv.width=N; scanCv.height=N;
         const ctx=scanCv.getContext('2d',{willReadFrequently:true});
-        ctx.drawImage(v, cx, cy, side, side, 0, 0, 720, 720);
-        const img=ctx.getImageData(0,0,720,720);
-        const code=jsQR(img.data,720,720,{inversionAttempts:'attemptBoth'});
+        ctx.drawImage(v, cx, cy, side, side, 0, 0, N, N);
+        const img=ctx.getImageData(0,0,N,N);
+        const code=jsQR(img.data,N,N,{inversionAttempts:'attemptBoth'});
         data=(code&&code.data)?code.data:null;
       }catch(e){ scanErr=String(e&&e.message||e).slice(0,40); }
     }
@@ -1339,7 +1340,7 @@ $('#btnQrScan').addEventListener('click',async ()=>{
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){ toast('この端末ではカメラが使えません'); return; }
   scanReset();
   $('#dlgQrScan').showModal();
-  try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}}}); }
+  try{ scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1920},height:{ideal:1080}}}); }
   catch(e){
     $('#scanOut').innerHTML='<div class="warnbox" style="margin-top:11px;">カメラを使えませんでした。<br>ブラウザの設定でカメラの使用を許可してください。</div>';
     return;
