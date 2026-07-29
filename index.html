@@ -178,7 +178,8 @@ table.tbl th{background:var(--paper2);font-weight:700;white-space:nowrap;}
 input.masked{-webkit-text-security:disc;}
 input.masked.show{-webkit-text-security:none;}
 .qrwrap{text-align:center;}
-.qrwrap canvas{width:min(92vw,700px);height:auto;background:#fff;border:10px solid #fff;
+.qrwrap canvas{width:min(92vw,700px);height:auto;background:#fff;border:16px solid #fff;
+  image-rendering:pixelated;image-rendering:-webkit-optimize-contrast;
   border-radius:8px;box-shadow:0 2px 8px rgba(27,42,74,.18);}
 .qrstep{font-size:19px;font-weight:700;margin:12px 0 4px;}
 .qrbar{display:flex;gap:4px;justify-content:center;margin:8px 0 4px;flex-wrap:wrap;}
@@ -535,7 +536,7 @@ input.masked.show{-webkit-text-security:none;}
   <div class="sheet" style="width:min(780px,96vw);">
     <div class="sheet-head"><b id="qrTitle">QRコードで渡す</b><button id="qrSendClose">閉じる</button></div>
     <div class="sheet-body qrwrap">
-      <canvas id="qrCanvas" width="640" height="640"></canvas>
+      <canvas id="qrCanvas" width="1024" height="1024"></canvas>
       <p class="qrstep" id="qrStep">—</p>
       <div class="qrbar" id="qrBar"></div>
       <p class="qrhint" id="qrHint"></p>
@@ -1119,8 +1120,8 @@ async function unwrap2(body,pass){
 
 /* ===== QRコードで渡す ===== */
 const QR_MARK='DQR1:';
-const QR_CHUNK=250;
-let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=700, qrPaused=false;
+const QR_CHUNK=150;
+let qrParts=[], qrIdx=0, qrTimer=null, qrSpeed=1400, qrPaused=false;
 function gotoSettings(msg){
   $$('nav.tabs button').forEach(x=>x.classList.remove('on'));
   const t=document.querySelector('nav.tabs button[data-tab="set"]');
@@ -1138,7 +1139,7 @@ async function renderQrCount(){
 function drawQR(text){
   const cv=$('#qrCanvas'), ctx=cv.getContext('2d');
   const qr=qrcode(0,'M'); qr.addData(text); qr.make();
-  const n=qr.getModuleCount(), pad=2;
+  const n=qr.getModuleCount(), pad=4;
   const cell=Math.floor(cv.width/(n+pad*2));
   const off=Math.floor((cv.width-cell*n)/2);
   ctx.fillStyle='#fff'; ctx.fillRect(0,0,cv.width,cv.height);
@@ -1202,7 +1203,7 @@ $('#qrSendClose').addEventListener('click',closeSend);
 $('#qrSendClose2').addEventListener('click',closeSend);
 $('#qrPause').addEventListener('click',()=>{ qrPaused=!qrPaused; $('#qrPause').textContent=qrPaused?'すすめる':'とめる'; });
 $('#qrFaster').addEventListener('click',()=>{ qrSpeed=Math.max(300,qrSpeed-200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
-$('#qrSlower').addEventListener('click',()=>{ qrSpeed=Math.min(2000,qrSpeed+200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
+$('#qrSlower').addEventListener('click',()=>{ qrSpeed=Math.min(4000,qrSpeed+200); qrStart(); toast('1枚 '+(qrSpeed/1000).toFixed(1)+'秒'); });
 
 /* ===== QRコードを読み取る ===== */
 let scanStream=null, scanRAF=null, scanGot={}, scanSid='', scanTotal=0, scanCv=null;
