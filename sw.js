@@ -1,4 +1,9 @@
-const CACHE = 'day-kiroku-v19';
+/* つくる手帖 ── キャッシュはオリジン単位で共有されます。
+   github.io は全リポジトリが同じオリジンなので、
+   自分の名前空間（TT_NS）のものだけを消します。 */
+const TT_NS = 'tt:day-kiroku:';
+const TT_OLD = 'day-kiroku-v19';   /* 旧名。次の更新のときに消して構いません */
+const CACHE = TT_NS + 'v19';
 const ASSETS = ['./','./index.html','./manifest.json','./qrcode.js','./jsQR.js','./icon-192.png','./icon-512.png','./icon-180.png'];
 
 /* 入れておく。1つ失敗しても、ほかは入れる */
@@ -14,7 +19,7 @@ self.addEventListener('install', e=>{
 self.addEventListener('activate', e=>{
   e.waitUntil(
     caches.keys()
-      .then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))
+      .then(keys=>Promise.all(keys.filter(k => (k.startsWith(TT_NS) || k === TT_OLD) && k !== CACHE).map(k=>caches.delete(k))))
       .then(()=>self.clients.claim())
   );
 });
