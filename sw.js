@@ -3,7 +3,7 @@
    自分の名前空間（TT_NS）のものだけを消します。 */
 const TT_NS = 'tt:day-kiroku:';
 const TT_OLD = 'day-kiroku-v19';   /* 旧名。次の更新のときに消して構いません */
-const CACHE = TT_NS + 'v19';
+const CACHE = TT_NS + 'v20';
 const ASSETS = ['./','./index.html','./manifest.json','./qrcode.js','./jsQR.js','./icon-192.png','./icon-512.png','./icon-180.png'];
 
 /* 入れておく。1つ失敗しても、ほかは入れる */
